@@ -5,7 +5,8 @@ A native macOS pomodoro timer (SwiftUI, no third-party code).
 - Focus / Short Break / Long Break, 4-pomodoro cycles
 - When time's up: **+5 / +10 / +15 min**, as many times as you like — it all stays one session
 - Day / Month / Year stats: timeline, goal ring, focus by type, strongest hours, calendar heatmap, monthly bars
-- **Plan**: recurring daily tasks (minutes per day, chosen weekdays), bulk add with `Name | minutes | note` lines, per-day completion, and a day/week timeline of time blocks
+- **Plan**: a daily study target (hours), split into recurring tasks (hours per day, chosen weekdays); bulk add with `Name | hours | note` lines (`30m` for minutes); per-day completion; a day/week timeline of time blocks
+- **Two goals side by side**: pomodoro sessions per day, and study hours per day
 - **Link session to task**: focus time counts toward a plan task; "Today's plan" and "What I did" on the Focus page
 - **Calendar + DDL**: month/week/list view with daily completion rings, focus dots and deadlines
 - **History + manual log**: search, filter, and add past focus sessions by hand (optionally left out of stats)

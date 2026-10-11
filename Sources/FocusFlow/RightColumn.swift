@@ -18,10 +18,10 @@ struct RightColumn: View {
                 TodayTimelineCard()
                 QuoteCard(text: "You’re building something great.\nA little more time can go a long way.")
             } else {
+                // Sessions goal (pomodoros) and the time-based plan live side by side.
+                TodayCard(compact: hasPlanToday)
                 if hasPlanToday {
                     TodayPlanCard()
-                } else {
-                    TodayCard()
                 }
                 WhatIDidCard()
             }
@@ -42,6 +42,7 @@ struct TodayPlanCard: View {
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var store: Store
     @EnvironmentObject var nav: Nav
+    @AppStorage(Pref.dailyStudyMinutes) private var studyTarget = 360
 
     var body: some View {
         let logic = PlanLogic(tasks: store.tasks, sessions: store.merged(with: engine.liveRecord),
@@ -49,6 +50,8 @@ struct TodayPlanCard: View {
         let today = Date()
         let tasks = logic.tasks(on: today)
         let weekday = Calendar.current.component(.weekday, from: today)
+        let study = logic.studySeconds(on: today)
+        let target = max(1, studyTarget) * 60
         CardBox(spacing: 12) {
             Button {
                 nav.page = .plan
@@ -68,6 +71,22 @@ struct TodayPlanCard: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            InnerBox(padding: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "book")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Palette.red)
+                    Text("Study time")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(Palette.ink)
+                    Spacer()
+                    (Text(Fmt.hm(study)).bold().foregroundColor(Palette.ink)
+                     + Text(" / \(Fmt.hm(target))").foregroundColor(Palette.inkSoft))
+                        .font(.system(size: 13))
+                }
+                ProgressBar(value: Double(study) / Double(target), height: 10)
+            }
+            .help("All focus today (timer and manual) plus time blocks linked to a task")
             ScrollView {
                 VStack(spacing: 10) {
                     ForEach(tasks) { t in
@@ -76,7 +95,7 @@ struct TodayPlanCard: View {
                     }
                 }
             }
-            .frame(maxHeight: CGFloat(min(tasks.count, 3)) * 100)
+            .frame(maxHeight: tasks.count > 2 ? 214 : CGFloat(tasks.count) * 104)
         }
     }
 }
@@ -92,7 +111,7 @@ struct PlanTaskRow: View {
     var body: some View {
         let today = Date()
         let fraction = logic.fraction(task, on: today)
-        let minutesDone = logic.progress(task, on: today) / 60
+        let done = logic.progress(task, on: today)
         HStack(alignment: .top, spacing: 12) {
             Button {
                 store.toggleCheck(task.id, on: today)
@@ -108,7 +127,7 @@ struct PlanTaskRow: View {
                         .foregroundColor(Palette.ink)
                         .lineLimit(1)
                     Spacer()
-                    Text("\(task.minutes) min")
+                    Text(Fmt.hm(task.minutes * 60))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Palette.ink)
                     Button {
@@ -123,7 +142,7 @@ struct PlanTaskRow: View {
                 }
                 HStack(spacing: 8) {
                     ProgressBar(value: fraction, height: 7)
-                    Text("\(min(minutesDone, task.minutes * 9)) / \(task.minutes) min")
+                    Text("\(Fmt.hm(done)) / \(Fmt.hm(task.minutes * 60))")
                         .font(.system(size: 11))
                         .foregroundColor(Palette.inkSoft)
                         .fixedSize()
@@ -330,6 +349,8 @@ struct TodayCard: View {
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var store: Store
     @EnvironmentObject var nav: Nav
+    /// Compact = just the sessions goal, used when Today's plan sits below it.
+    var compact = false
     @AppStorage(Pref.dailyGoal) private var goal = 6
     @State private var editingGoal = false
 
@@ -394,9 +415,11 @@ struct TodayCard: View {
                 ProgressBar(value: Double(today.completed) / Double(max(goal, 1)), height: 12)
             }
 
-            HStack(spacing: 12) {
-                StatMini(icon: "checkmark.circle", title: "Sessions\ncompleted", value: "\(today.completed)")
-                StatMini(icon: "clock", title: "Total focused\ntime", value: Fmt.minutes(today.focusSeconds))
+            if !compact {
+                HStack(spacing: 12) {
+                    StatMini(icon: "checkmark.circle", title: "Sessions\ncompleted", value: "\(today.completed)")
+                    StatMini(icon: "clock", title: "Total focused\ntime", value: Fmt.minutes(today.focusSeconds))
+                }
             }
         }
     }

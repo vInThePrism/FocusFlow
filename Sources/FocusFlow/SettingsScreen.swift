@@ -11,6 +11,7 @@ struct SettingsScreen: View {
     @AppStorage(Pref.idlePause) private var idlePause = true
     @AppStorage(Pref.idleMinutes) private var idleMinutes = 5
     @AppStorage(Pref.dailyGoal) private var dailyGoal = 6
+    @AppStorage(Pref.dailyStudyMinutes) private var studyMinutes = 360
     @AppStorage(Pref.repeatExtension) private var repeatExt = true
     @AppStorage(Pref.extendMinutes) private var extendMin = 5
     @AppStorage(Pref.menuBarTime) private var menuBarTime = true
@@ -69,8 +70,11 @@ struct SettingsScreen: View {
                 }
 
                 SettingRow(title: "Daily goals", icon: "scope") {
-                    OptionLine(title: "Target sessions per day") {
-                        ValueStepper(value: $dailyGoal, range: 1...24, width: 80)
+                    OptionLine(title: "Target sessions per day (pomodoros)") {
+                        ValueStepper(value: $dailyGoal, range: 1...24, width: 100)
+                    }
+                    OptionLine(title: "Study time per day (split across Plan tasks)") {
+                        ValueStepper(value: $studyMinutes, range: 30...960, step: 30, width: 100, format: { Fmt.hm($0 * 60) })
                     }
                 }
 

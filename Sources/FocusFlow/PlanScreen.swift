@@ -12,6 +12,7 @@ struct PlanScreen: View {
         HStack(alignment: .top, spacing: 18) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    StudyTargetCard(logic: logic)
                     tasksCard(logic)
                     BulkApplyCard()
                 }
@@ -40,7 +41,7 @@ struct PlanScreen: View {
                     Text("Recurring daily tasks")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(Palette.ink)
-                    Text("Set the activities you want to repeat each week.")
+                    Text("Split your daily study time into the activities you repeat each week.")
                         .font(.system(size: 13))
                         .foregroundColor(Palette.inkSoft)
                 }
@@ -90,7 +91,7 @@ struct TaskRow: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Text("\(task.minutes) min")
+            Text(Fmt.hm(task.minutes * 60))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(Palette.ink)
                 .fixedSize()
@@ -143,7 +144,7 @@ struct BulkApplyCard: View {
     @State private var days: Set<Int> = Weekdays.workdays
     @State private var applied: String?
 
-    private let placeholder = "CUDA Coding Practice | 120 | GPU programming\nLeetCode Practice | 90 | Algorithm problem solving\nResume Submission | 30"
+    private let placeholder = "CUDA Coding Practice | 2 | GPU programming\nLeetCode Practice | 1.5 | Algorithm problem solving\nResume Submission | 30m"
 
     var body: some View {
         let parsed = BulkParser.parse(text)
@@ -152,7 +153,7 @@ struct BulkApplyCard: View {
                 Text("Bulk apply / Quick add")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(Palette.ink)
-                Text("Add multiple tasks at once. One per line, format: Name | minutes | optional note")
+                Text("Add multiple tasks at once. One per line: Name | hours | optional note  (write 30m for minutes)")
                     .font(.system(size: 13))
                     .foregroundColor(Palette.inkSoft)
             }
@@ -214,7 +215,7 @@ struct BulkApplyCard: View {
                 Text(days.isEmpty ? "Pick at least one day" : "Will apply to \(Weekdays.names(days))")
                     .font(.system(size: 12))
                     .foregroundColor(Palette.ink)
-                Text("\(parsed.count) \(parsed.count == 1 ? "task" : "tasks") scheduled")
+                Text("\(parsed.count) \(parsed.count == 1 ? "task" : "tasks") · \(Fmt.hm(parsed.reduce(0) { $0 + $1.minutes } * 60)) a day")
                     .font(.system(size: 11))
                     .foregroundColor(Palette.muted)
             }
@@ -230,7 +231,7 @@ struct BulkApplyCard: View {
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(Palette.ink)
                                 .lineLimit(1)
-                            Text("\(p.minutes) min")
+                            Text(Fmt.hm(p.minutes * 60))
                                 .font(.system(size: 10))
                                 .foregroundColor(Palette.muted)
                         }
@@ -507,5 +508,74 @@ struct WeekSchedule: View {
             }
         }
         .frame(maxHeight: .infinity)
+    }
+}
+
+// MARK: - Daily study target
+
+/// The total study time per day, and how much of it each weekday's tasks already claim.
+struct StudyTargetCard: View {
+    let logic: PlanLogic
+    @AppStorage(Pref.dailyStudyMinutes) private var target = 360
+
+    private var todayWeekday: Int { Calendar.current.component(.weekday, from: Date()) }
+
+    private var status: (text: String, warn: Bool) {
+        let planned = logic.plannedSeconds(weekday: todayWeekday)
+        let goal = target * 60
+        if planned == 0 { return ("Nothing assigned for today yet — add tasks below.", false) }
+        if planned > goal { return ("Today’s tasks add up to \(Fmt.hm(planned)), \(Fmt.hm(planned - goal)) over your \(Fmt.hm(goal)) target.", true) }
+        if planned < goal { return ("Today: \(Fmt.hm(planned)) of \(Fmt.hm(goal)) assigned to tasks · \(Fmt.hm(goal - planned)) unassigned.", false) }
+        return ("Today’s tasks fill your \(Fmt.hm(goal)) target exactly.", false)
+    }
+
+    var body: some View {
+        CardBox(spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Daily study target")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(Palette.ink)
+                    Text("How long you want to study each day. The tasks below split it up.")
+                        .font(.system(size: 13))
+                        .foregroundColor(Palette.inkSoft)
+                }
+                Spacer()
+                ValueStepper(value: $target, range: 30...960, step: 30, width: 120, format: { Fmt.hm($0 * 60) })
+            }
+            HStack(spacing: 8) {
+                ForEach(Weekdays.order, id: \.self) { w in
+                    dayColumn(w)
+                }
+            }
+            Text(status.text)
+                .font(.system(size: 12))
+                .foregroundColor(status.warn ? Palette.orange : Palette.inkSoft)
+        }
+    }
+
+    private func dayColumn(_ w: Int) -> some View {
+        let planned = logic.plannedSeconds(weekday: w)
+        let goal = max(1, target * 60)
+        let over = planned > goal
+        let isToday = w == todayWeekday
+        let height = 46 * CGFloat(min(1, Double(planned) / Double(goal)))
+        return VStack(spacing: 5) {
+            Text(Weekdays.short(w))
+                .font(.system(size: 11, weight: isToday ? .bold : .regular))
+                .foregroundColor(isToday ? Palette.red : Palette.inkSoft)
+            ZStack(alignment: .bottom) {
+                RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Palette.barTrack)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(over ? AnyShapeStyle(Palette.orange) : (isToday ? AnyShapeStyle(Palette.redGradient) : AnyShapeStyle(Palette.salmon)))
+                    .frame(height: height)
+            }
+            .frame(width: 28, height: 46)
+            Text(planned > 0 ? Fmt.hm(planned) : "—")
+                .font(.system(size: 10))
+                .foregroundColor(over ? Palette.orange : Palette.inkSoft)
+        }
+        .frame(maxWidth: .infinity)
+        .help("\(Weekdays.short(w)): \(Fmt.hm(planned)) of tasks planned, target \(Fmt.hm(goal))")
     }
 }

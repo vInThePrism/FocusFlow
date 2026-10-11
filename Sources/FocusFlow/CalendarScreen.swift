@@ -100,7 +100,7 @@ struct CalendarScreen: View {
     private var legend: some View {
         HStack(spacing: 28) {
             legendItem(AnyView(CompletionRing(fraction: 1, size: 18, lineWidth: 3.5)),
-                       "Daily plan", "Full ring = all daily tasks done")
+                       "Study time", "Full ring = daily study target reached")
             legendItem(AnyView(HStack(spacing: 3) {
                 Circle().fill(Palette.red).frame(width: 8, height: 8)
                 Circle().fill(Palette.salmon.opacity(0.7)).frame(width: 8, height: 8)
@@ -205,6 +205,8 @@ struct DayCell: View {
         let isToday = cal.isDateInToday(date)
         let isPast = cal.startOfDay(for: date) <= cal.startOfDay(for: Date())
         let summary = logic.summary(on: date)
+        let study = logic.studySeconds(on: date)
+        let target = max(1, Pref.int(Pref.dailyStudyMinutes)) * 60
         let deadlines = store.deadlines.filter { cal.isDate($0.date, inSameDayAs: date) }
         let sessions = store.records.filter { $0.phase == .focus && $0.countsInStats && cal.isDate($0.start, inSameDayAs: date) }
         VStack(alignment: .leading, spacing: 4) {
@@ -224,9 +226,9 @@ struct DayCell: View {
                 Spacer()
             }
             VStack(spacing: 4) {
-                if summary.total > 0 && isPast && inMonth {
-                    CompletionRing(fraction: Double(summary.done) / Double(summary.total), size: tall ? 30 : 22)
-                        .help("\(summary.done) of \(summary.total) daily tasks done")
+                if (summary.total > 0 || study > 0) && isPast && inMonth {
+                    CompletionRing(fraction: Double(study) / Double(target), size: tall ? 30 : 22)
+                        .help("Studied \(Fmt.hm(study)) of \(Fmt.hm(target))" + (summary.total > 0 ? " · \(summary.done)/\(summary.total) tasks done" : ""))
                 }
                 ForEach(deadlines.prefix(tall ? 5 : 2)) { d in
                     HStack(spacing: 3) {
@@ -402,6 +404,8 @@ struct DailyGoalsCard: View {
     var body: some View {
         let tasks = logic.tasks(on: day)
         let summary = logic.summary(on: day)
+        let study = logic.studySeconds(on: day)
+        let target = max(1, Pref.int(Pref.dailyStudyMinutes)) * 60
         CardBox(spacing: 12) {
             HStack {
                 Image(systemName: "scope")
@@ -414,6 +418,22 @@ struct DailyGoalsCard: View {
                 Text("\(summary.done) / \(summary.total) completed")
                     .font(.system(size: 12))
                     .foregroundColor(Palette.inkSoft)
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "book")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Palette.red)
+                    .frame(width: 20)
+                Text("Study time")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Palette.ink)
+                Spacer(minLength: 6)
+                ProgressBar(value: Double(study) / Double(target), height: 6)
+                    .frame(width: 56)
+                Text("\(Fmt.hm(study)) / \(Fmt.hm(target))")
+                    .font(.system(size: 11))
+                    .foregroundColor(Palette.inkSoft)
+                    .frame(width: 80, alignment: .trailing)
             }
             if tasks.isEmpty {
                 Button {
@@ -442,7 +462,7 @@ struct DailyGoalsCard: View {
                         Spacer(minLength: 6)
                         ProgressBar(value: fraction, height: 6)
                             .frame(width: 56)
-                        Text("\(min(logic.progress(t, on: day) / 60, 9999)) / \(t.minutes) min")
+                        Text("\(Fmt.hm(logic.progress(t, on: day))) / \(Fmt.hm(t.minutes * 60))")
                             .font(.system(size: 11))
                             .foregroundColor(Palette.inkSoft)
                             .frame(width: 80, alignment: .trailing)
@@ -460,6 +480,8 @@ struct CompletionSummaryCard: View {
     var body: some View {
         let s = logic.summary(on: day)
         let fraction = s.total > 0 ? Double(s.done) / Double(s.total) : 0
+        let study = logic.studySeconds(on: day)
+        let target = max(1, Pref.int(Pref.dailyStudyMinutes)) * 60
         let pct = Int((fraction * 100).rounded())
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
@@ -477,6 +499,9 @@ struct CompletionSummaryCard: View {
                     Text("planned tasks completed")
                         .font(.system(size: 13))
                         .foregroundColor(Palette.inkSoft)
+                    Text("\(Fmt.hm(study)) of \(Fmt.hm(target)) studied")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(study >= target ? Palette.green : Palette.red)
                 }
                 Spacer()
                 ZStack {

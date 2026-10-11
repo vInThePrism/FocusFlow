@@ -211,10 +211,12 @@ struct ValueStepper: View {
     var suffix: String = ""
     var width: CGFloat = 110
     var onTouch: (() -> Void)? = nil
+    /// Custom label, e.g. minutes shown as "1h 30m".
+    var format: ((Int) -> String)? = nil
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("\(value)\(suffix)")
+            Text(format?(value) ?? "\(value)\(suffix)")
                 .font(.system(size: 13))
                 .foregroundColor(Palette.ink)
                 .monospacedDigit()

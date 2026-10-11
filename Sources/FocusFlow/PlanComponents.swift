@@ -248,8 +248,8 @@ struct TaskEditor: View {
             }
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Minutes per day").font(.system(size: 12, weight: .medium)).foregroundColor(Palette.inkSoft)
-                    ValueStepper(value: $task.minutes, range: 5...600, step: 5, suffix: " min", width: 130)
+                    Text("Time per day").font(.system(size: 12, weight: .medium)).foregroundColor(Palette.inkSoft)
+                    ValueStepper(value: $task.minutes, range: 15...960, step: 15, width: 130, format: { Fmt.hm($0 * 60) })
                 }
                 Spacer()
                 VStack(alignment: .leading, spacing: 6) {

@@ -112,6 +112,7 @@ enum Pref {
     static let cycleCount = "cycleCount"
     static let cycleDay = "cycleDay"
     static let linkedTask = "linkedTaskID"
+    static let dailyStudyMinutes = "dailyStudyMinutes"
 
     static let cycleLength = 4
 
@@ -126,6 +127,7 @@ enum Pref {
             idlePause: true,
             idleMinutes: 5,
             dailyGoal: 6,
+            dailyStudyMinutes: 360,
             weeklyGoalHours: 25,
             repeatExtension: true,
             extendMinutes: 5,

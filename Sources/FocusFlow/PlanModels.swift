@@ -116,19 +116,42 @@ struct PlanLogic {
     /// Seconds spent on the task that day: linked focus sessions (timer or manual) and
     /// linked time blocks. Overlaps are counted once.
     func progress(_ t: PlanTask, on day: Date) -> Int {
+        spans(on: day, task: t.id)
+    }
+
+    /// Total study time that day: every counted focus session (timer or manual) plus
+    /// time blocks linked to a task. Overlaps are counted once.
+    func studySeconds(on day: Date) -> Int {
+        spans(on: day, task: nil)
+    }
+
+    /// Minutes of tasks scheduled that day.
+    func plannedSeconds(on day: Date) -> Int {
+        tasks(on: day).reduce(0) { $0 + $1.minutes * 60 }
+    }
+
+    /// Minutes of active tasks scheduled on a weekday (1 = Sunday).
+    func plannedSeconds(weekday: Int) -> Int {
+        tasks.filter { $0.enabled && $0.weekdays.contains(weekday) }.reduce(0) { $0 + $1.minutes * 60 }
+    }
+
+    /// `task == nil` means all study time.
+    private func spans(on day: Date, task: UUID?) -> Int {
         let r = dayRange(day)
-        var spans: [(Date, Date)] = []
-        for s in sessions where s.taskID == t.id && s.phase == .focus && s.countsInStats && s.start >= r.start && s.start < r.end {
+        var list: [(Date, Date)] = []
+        for s in sessions where s.phase == .focus && s.countsInStats && s.start >= r.start && s.start < r.end {
+            if let t = task, s.taskID != t { continue }
             let start = max(s.start, s.end.addingTimeInterval(-Double(s.activeSeconds)))
-            spans.append((start, s.end))
+            list.append((start, s.end))
         }
-        for b in blocks where b.taskID == t.id && b.start >= r.start && b.start < r.end {
-            spans.append((b.start, b.end))
+        for b in blocks where b.taskID != nil && b.start >= r.start && b.start < r.end {
+            if let t = task, b.taskID != t { continue }
+            list.append((b.start, b.end))
         }
-        spans.sort { $0.0 < $1.0 }
+        list.sort { $0.0 < $1.0 }
         var total: TimeInterval = 0
         var current: (Date, Date)?
-        for sp in spans where sp.1 > sp.0 {
+        for sp in list where sp.1 > sp.0 {
             if let c = current, sp.0 <= c.1 {
                 current = (c.0, max(c.1, sp.1))
             } else {
@@ -184,17 +207,28 @@ struct ParsedTask: Identifiable {
 }
 
 enum BulkParser {
-    /// One task per line: `Name | minutes | optional note`.
+    /// Reads a duration in hours ("2", "1.5", "2h", "1.5小时") or minutes ("90m", "45min", "30分钟").
+    static func minutes(from raw: String) -> Int? {
+        let t = raw.lowercased().replacingOccurrences(of: " ", with: "")
+        guard !t.isEmpty else { return nil }
+        let number = t.prefix { $0.isNumber || $0 == "." }
+        guard let value = Double(number), value > 0 else { return nil }
+        let unit = t.dropFirst(number.count)
+        let isMinutes = unit.hasPrefix("m") || unit.hasPrefix("分")
+        let mins = isMinutes ? value : value * 60
+        return min(max(Int(mins.rounded()), 5), 16 * 60)
+    }
+
+    /// One task per line: `Name | hours | optional note` (write `90m` for minutes).
     static func parse(_ text: String) -> [ParsedTask] {
         text.components(separatedBy: .newlines).compactMap { raw -> ParsedTask? in
             let line = raw.replacingOccurrences(of: "｜", with: "|").trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty else { return nil }
             let parts = line.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
             guard let name = parts.first, !name.isEmpty else { return nil }
-            var minutes = 30
-            if parts.count > 1 {
-                let digits = parts[1].filter { $0.isNumber }
-                if let m = Int(digits), m > 0 { minutes = min(m, 24 * 60) }
+            var minutes = 60
+            if parts.count > 1, let m = BulkParser.minutes(from: parts[1]) {
+                minutes = m
             }
             let note = parts.count > 2 ? parts[2...].joined(separator: " | ") : ""
             return ParsedTask(name: name, minutes: minutes, note: note)
