@@ -78,6 +78,7 @@ enum Fmt {
     static let monthLong = make("MMMM yyyy")
     static let year = make("yyyy")
     static let time = make("h:mm a")
+    static let clockShort = make("h:mm")
     static let weekday = make("EEE")
     static let monthAbbr = make("MMM")
     static let fileStamp: DateFormatter = {

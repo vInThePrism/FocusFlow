@@ -46,8 +46,14 @@ struct RunningView: View {
             IntentionHeader()
             Spacer(minLength: 18)
             TimerDial(size: 316)
-            PomodoroDots()
-                .padding(.top, 26)
+            ZStack {
+                PomodoroDots()
+                HStack {
+                    Spacer()
+                    LinkTaskMenu()
+                }
+            }
+            .padding(.top, 26)
             Spacer(minLength: 22)
             ControlsRow()
             Spacer(minLength: 26)
@@ -366,30 +372,10 @@ struct ExtendCluster: View {
         .disabled(!engine.canExtend)
         .opacity(engine.canExtend ? 1 : 0.5)
         .help("Add time (repeatable)")
-        .overlay(alignment: .top) {
-            tooltip
-                .fixedSize()
-                .offset(x: 74, y: -52)
-        }
         .overlay(alignment: .topTrailing) {
             chips
                 .fixedSize()
                 .offset(x: 92, y: -8)
-        }
-    }
-
-    private var tooltip: some View {
-        VStack(spacing: 0) {
-            Text("Add time (repeatable)")
-                .font(.system(size: 12))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color(hex: 0x8E7D78, opacity: 0.92)))
-            Triangle()
-                .fill(Color(hex: 0x8E7D78, opacity: 0.92))
-                .frame(width: 12, height: 6)
-                .offset(x: -40)
         }
     }
 
@@ -422,5 +408,58 @@ struct Triangle: Shape {
         p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
         p.closeSubpath()
         return p
+    }
+}
+
+/// "Link session to task": focus time then counts toward that plan task.
+struct LinkTaskMenu: View {
+    @EnvironmentObject var engine: Engine
+    @EnvironmentObject var store: Store
+
+    var body: some View {
+        let linked = store.task(engine.linkedTaskID)
+        let weekday = Calendar.current.component(.weekday, from: Date())
+        let today = store.tasks.filter { $0.enabled && $0.weekdays.contains(weekday) }
+        let others = store.tasks.filter { t in !today.contains { $0.id == t.id } }
+        Menu {
+            if !today.isEmpty {
+                Section("Today’s plan") {
+                    ForEach(today) { t in
+                        Button(t.name) { engine.link(t) }
+                    }
+                }
+            }
+            if !others.isEmpty {
+                Section("Other tasks") {
+                    ForEach(others) { t in
+                        Button(t.name) { engine.link(t) }
+                    }
+                }
+            }
+            if store.tasks.isEmpty {
+                Text("No tasks yet — add them in Plan")
+            }
+            if linked != nil {
+                Divider()
+                Button("Unlink task") { engine.link(nil) }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "link")
+                Text(linked?.name ?? "Link session to task")
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+            }
+            .font(.system(size: 13))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .frame(maxWidth: 200)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(Capsule().fill(Color.white))
+        .overlay(Capsule().strokeBorder(linked == nil ? Palette.stroke : Palette.red.opacity(0.5)))
+        .help(linked == nil ? "Count this focus time toward a plan task" : "Focus time counts toward \(linked?.name ?? "")")
     }
 }

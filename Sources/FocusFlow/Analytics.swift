@@ -76,7 +76,9 @@ struct Analytics {
     private let focusByDay: [Date: Int]
     private let breakByDay: [Date: Int]
 
-    init(records: [SessionRecord]) {
+    /// Records switched out of statistics are ignored here.
+    init(records all: [SessionRecord]) {
+        let records = all.filter { $0.countsInStats }
         self.records = records
         let c = Calendar.current
         var f: [Date: Int] = [:]
@@ -297,7 +299,7 @@ struct TodaySummary {
 
     init(all: [SessionRecord], day: Date = Date()) {
         let c = Calendar.current
-        records = all.filter { c.isDate($0.start, inSameDayAs: day) }.sorted { $0.start < $1.start }
+        records = all.filter { $0.countsInStats && c.isDate($0.start, inSameDayAs: day) }.sorted { $0.start < $1.start }
     }
 
     var completed: Int { records.filter { $0.phase == .focus && $0.completed }.count }

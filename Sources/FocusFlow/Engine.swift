@@ -20,6 +20,10 @@ final class Engine: ObservableObject {
     @Published var intention: String {
         didSet { UserDefaults.standard.set(intention, forKey: Pref.intention) }
     }
+    /// The plan task focus sessions count toward.
+    @Published private(set) var linkedTaskID: UUID? = nil {
+        didSet { UserDefaults.standard.set(linkedTaskID?.uuidString, forKey: Pref.linkedTask) }
+    }
 
     private let store: Store
     private var endDate: Date?
@@ -38,6 +42,7 @@ final class Engine: ObservableObject {
     init(store: Store) {
         self.store = store
         intention = UserDefaults.standard.string(forKey: Pref.intention) ?? ""
+        linkedTaskID = UserDefaults.standard.string(forKey: Pref.linkedTask).flatMap { UUID(uuidString: $0) }
         loadCycle()
         prepare(.focus)
 
@@ -125,11 +130,19 @@ final class Engine: ObservableObject {
             extensionSeconds: extensionSeconds,
             extensions: extensions,
             activeSeconds: Int(activeSeconds.rounded()),
-            completed: completedOnce
+            completed: completedOnce,
+            taskID: phase == .focus ? linkedTaskID : nil
         )
     }
 
     // MARK: - Actions
+
+    /// Links focus sessions to a plan task (and uses its name as the intention).
+    func link(_ task: PlanTask?) {
+        linkedTaskID = task?.id
+        if let t = task { intention = t.name }
+        if state != .idle && phase == .focus { checkpoint() }
+    }
 
     func select(_ p: Phase) {
         if p == phase && state == .idle { return }

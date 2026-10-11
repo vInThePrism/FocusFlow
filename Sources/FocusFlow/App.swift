@@ -4,15 +4,17 @@ import Combine
 import UniformTypeIdentifiers
 
 enum Page: String, CaseIterable, Identifiable {
-    case focus = "Focus", stats = "Stats", history = "History", settings = "Settings"
+    case focus = "Focus", plan = "Plan", calendar = "Calendar", stats = "Stats", history = "History", settings = "Settings"
 
     var id: String { rawValue }
 
     func icon(selected: Bool) -> String {
         switch self {
         case .focus: return "clock"
+        case .plan: return "checklist"
+        case .calendar: return "calendar"
         case .stats: return selected ? "chart.bar.fill" : "chart.bar"
-        case .history: return "calendar"
+        case .history: return "clock.arrow.circlepath"
         case .settings: return "gearshape"
         }
     }
@@ -119,6 +121,8 @@ struct RootView: View {
                 Palette.canvas
                 switch nav.page {
                 case .focus: FocusScreen()
+                case .plan: PlanScreen()
+                case .calendar: CalendarScreen()
                 case .stats: StatsScreen()
                 case .history: HistoryScreen()
                 case .settings: SettingsScreen()
@@ -141,6 +145,8 @@ struct Sidebar: View {
 
     private var quote: String {
         if nav.page == .settings { return "“Better focus,\na brighter you.”" }
+        if nav.page == .plan { return "“Plans turn\nintentions into\nbrighter days.”" }
+        if nav.page == .history { return "“Every focused\nmoment moves\nyou forward.”" }
         if nav.page == .focus && engine.state == .finished { return "“Momentum\ntoday creates\na brighter tomorrow.”" }
         return "“A calmer mind\nbuilds a brighter day.”"
     }
@@ -167,7 +173,7 @@ struct Sidebar: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 40)
+            .padding(.top, 34)
 
             Spacer(minLength: 20)
 
@@ -184,7 +190,7 @@ struct Sidebar: View {
                 .padding(.leading, 28)
                 .padding(.bottom, 36)
             }
-            .frame(height: 290)
+            .frame(height: 250)
         }
         .frame(maxHeight: .infinity)
         .background(LinearGradient(colors: [Palette.sidebarTop, Palette.sidebarBottom], startPoint: .top, endPoint: .bottom))

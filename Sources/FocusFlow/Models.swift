@@ -52,12 +52,20 @@ struct SessionRecord: Codable, Identifiable, Hashable {
     var activeSeconds: Int
     /// True once the timer reached zero at least once.
     var completed: Bool
+    /// The plan task this session counts toward.
+    var taskID: UUID? = nil
+    /// Logged by hand rather than timed.
+    var isManual = false
+    var note = ""
+    /// Off = kept in History but left out of stats and task progress.
+    var countsInStats = true
 
     var baseSeconds: Int { min(activeSeconds, plannedSeconds) }
     var extendedSeconds: Int { max(0, activeSeconds - plannedSeconds) }
 
     enum CodingKeys: String, CodingKey {
         case id, phase, intention, start, end, plannedSeconds, extensionSeconds, extensions, activeSeconds, completed
+        case taskID, isManual, note, countsInStats
     }
 }
 
@@ -75,6 +83,10 @@ extension SessionRecord {
         extensionSeconds = (try? c.decode(Int.self, forKey: .extensionSeconds)) ?? 0
         extensions = (try? c.decode(Int.self, forKey: .extensions)) ?? 0
         completed = (try? c.decode(Bool.self, forKey: .completed)) ?? true
+        taskID = try? c.decode(UUID.self, forKey: .taskID)
+        isManual = (try? c.decode(Bool.self, forKey: .isManual)) ?? false
+        note = (try? c.decode(String.self, forKey: .note)) ?? ""
+        countsInStats = (try? c.decode(Bool.self, forKey: .countsInStats)) ?? true
     }
 }
 
@@ -99,6 +111,7 @@ enum Pref {
     static let dataFolder = "dataFolderPath"
     static let cycleCount = "cycleCount"
     static let cycleDay = "cycleDay"
+    static let linkedTask = "linkedTaskID"
 
     static let cycleLength = 4
 
