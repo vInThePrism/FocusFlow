@@ -331,6 +331,7 @@ struct TodayCard: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var nav: Nav
     @AppStorage(Pref.dailyGoal) private var goal = 6
+    @State private var editingGoal = false
 
     var body: some View {
         let today = TodaySummary(all: store.merged(with: engine.liveRecord))
@@ -363,9 +364,32 @@ struct TodayCard: View {
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(Palette.ink)
                     Spacer()
-                    (Text("\(today.completed)").bold().foregroundColor(Palette.ink)
-                     + Text(" / \(goal) sessions").foregroundColor(Palette.inkSoft))
-                        .font(.system(size: 13))
+                    Button {
+                        editingGoal = true
+                    } label: {
+                        HStack(spacing: 5) {
+                            (Text("\(today.completed)").bold().foregroundColor(Palette.ink)
+                             + Text(" / \(goal) sessions").foregroundColor(Palette.inkSoft))
+                                .font(.system(size: 13))
+                            Image(systemName: "pencil")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(Palette.muted)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .help("Change your daily focus goal")
+                    .popover(isPresented: $editingGoal, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Daily focus goal")
+                                .font(.system(size: 13, weight: .semibold))
+                            ValueStepper(value: $goal, range: 1...24, suffix: " sessions", width: 140)
+                            Text("Also in Settings → Daily goals.")
+                                .font(.system(size: 11))
+                                .foregroundColor(Palette.muted)
+                        }
+                        .padding(16)
+                    }
                 }
                 ProgressBar(value: Double(today.completed) / Double(max(goal, 1)), height: 12)
             }
