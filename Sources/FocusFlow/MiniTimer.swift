@@ -63,7 +63,7 @@ struct MiniTimerView: View {
     private var subtitle: String {
         switch engine.phase {
         case .focus:
-            if engine.state == .finished { return "Session complete" }
+            if engine.state == .finished { return "Time's up · still counting" }
             return engine.intention.isEmpty ? "Focus" : engine.intention
         case .shortBreak: return "Short break"
         case .longBreak: return "Long break"
@@ -94,10 +94,10 @@ struct MiniTimerView: View {
             .help(engine.state == .running ? "Pause" : (engine.state == .finished ? "Add time" : "Start"))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(engine.state == .finished ? "00:00" : Fmt.clock(engine.remaining))
+                Text(engine.state == .finished ? "+" + Fmt.clock(engine.overtime) : Fmt.clock(engine.remaining))
                     .font(.system(size: 34, weight: .bold))
                     .monospacedDigit()
-                    .foregroundColor(Palette.ink)
+                    .foregroundColor(engine.state == .finished ? Palette.red : Palette.ink)
                 Text(subtitle)
                     .font(.system(size: 14))
                     .foregroundColor(Palette.inkSoft)

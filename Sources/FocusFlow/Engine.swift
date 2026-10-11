@@ -17,6 +17,8 @@ final class Engine: ObservableObject {
     @Published private(set) var extensions = 0
     @Published private(set) var completedInCycle = 0
     @Published private(set) var idlePaused = false
+    /// Time past the planned end. It keeps counting as focus until you choose what's next.
+    @Published private(set) var overtime: TimeInterval = 0
     @Published var intention: String {
         didSet { UserDefaults.standard.set(intention, forKey: Pref.intention) }
     }
@@ -85,6 +87,9 @@ final class Engine: ObservableObject {
 
     var extendStep: Int { max(1, Pref.int(Pref.extendMinutes)) }
 
+    /// True while overtime is being counted (it stops if you walk away and idle pause is on).
+    var overtimeCounting: Bool { state == .finished && resumedAt != nil }
+
     var canExtend: Bool {
         guard phase == .focus, state != .idle else { return false }
         return Pref.bool(Pref.repeatExtension) || extensions == 0
@@ -117,7 +122,7 @@ final class Engine: ObservableObject {
         let end: Date
         switch state {
         case .running: end = Date()
-        case .finished: end = finishedAt ?? Date()
+        case .finished: end = resumedAt != nil ? Date() : (frozenAt ?? finishedAt ?? Date())
         default: end = frozenAt ?? Date()
         }
         return SessionRecord(
@@ -181,25 +186,43 @@ final class Engine: ObservableObject {
         case .idle: start()
         case .running: pause()
         case .paused: resume()
-        case .finished: extend()
+        case .finished:
+            if overtimeCounting { extend() } else { resumeOvertime() }
         }
     }
 
-    /// Adds time. After time's up this restarts the countdown with the added minutes.
+    /// Picks overtime back up after idle detection stopped it.
+    func resumeOvertime() {
+        guard state == .finished, resumedAt == nil else { return }
+        resumedAt = Date()
+        frozenAt = nil
+        idlePaused = false
+        lastIdleCheck = Date()
+        startTicker()
+    }
+
+    /// Adds time. Before the end it pushes the end back. After time's up the overtime
+    /// already counted is kept and the new minutes start from now:
+    /// 25 min planned, +5 pressed at 31:00 → the session runs to 36:00.
     func extend(minutes: Int? = nil) {
         guard canExtend else { return }
         let add = (minutes ?? extendStep) * 60
-        extensionSeconds += add
         extensions += 1
         switch state {
         case .finished:
+            if resumedAt != nil { freezeClock() }
+            let over = max(0, accumulated - total)
+            extensionSeconds += Int(over.rounded()) + add
+            overtime = 0
             remaining = TimeInterval(add)
             finishedAt = nil
             run()
         case .running:
+            extensionSeconds += add
             endDate = endDate?.addingTimeInterval(TimeInterval(add))
             remaining += TimeInterval(add)
         case .paused:
+            extensionSeconds += add
             remaining += TimeInterval(add)
         case .idle:
             break
@@ -238,7 +261,6 @@ final class Engine: ObservableObject {
 
     func saveOnQuit() {
         guard state != .idle else { return }
-        if state == .running { freezeClock() }
         commit()
     }
 
@@ -266,6 +288,7 @@ final class Engine: ObservableObject {
         endDate = nil
         completedOnce = false
         idlePaused = false
+        overtime = 0
     }
 
     private func run() {
@@ -276,6 +299,10 @@ final class Engine: ObservableObject {
         state = .running
         idlePaused = false
         lastIdleCheck = now
+        startTicker()
+    }
+
+    private func startTicker() {
         ticker = Timer.publish(every: 0.5, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in self?.tick() }
@@ -296,10 +323,18 @@ final class Engine: ObservableObject {
     }
 
     private func tick() {
-        guard state == .running, let e = endDate else { return }
-        remaining = max(0, e.timeIntervalSinceNow)
-        if remaining <= 0 {
-            complete()
+        switch state {
+        case .running:
+            guard let e = endDate else { return }
+            remaining = max(0, e.timeIntervalSinceNow)
+            if remaining <= 0 {
+                complete()
+                return
+            }
+        case .finished:
+            guard resumedAt != nil else { return }
+            overtime = max(0, activeSeconds - total)
+        default:
             return
         }
         checkIdle()
@@ -307,11 +342,13 @@ final class Engine: ObservableObject {
     }
 
     private func complete() {
-        freezeClock()
-        remaining = 0
-        stopTicker()
         Sound.play(.end)
         if phase == .focus {
+            // Time's up, but the clock keeps running: everything until you pick
+            // +5 / break / finish still counts as focus.
+            endDate = nil
+            remaining = 0
+            overtime = 0
             if !completedOnce {
                 completedOnce = true
                 completedInCycle += 1
@@ -322,6 +359,9 @@ final class Engine: ObservableObject {
             checkpoint()
             Notifier.shared.focusDone(minutes: Int((activeSeconds / 60).rounded()), intention: intention, step: extendStep)
         } else {
+            freezeClock()
+            remaining = 0
+            stopTicker()
             completedOnce = true
             commit()
             prepare(.focus)
@@ -339,7 +379,7 @@ final class Engine: ObservableObject {
 
     /// Final save before the session is cleared.
     private func commit() {
-        if state == .running { freezeClock() }
+        if resumedAt != nil { freezeClock() }
         guard let r = liveRecord else { return }
         if r.activeSeconds >= 60 || r.completed {
             store.upsert(r)
@@ -359,10 +399,16 @@ final class Engine: ObservableObject {
         guard idle >= threshold else { return }
         freezeClock()
         // Give back the minutes you were away, so they don't count as focus.
-        let giveBack = min(idle, accumulated)
-        accumulated -= giveBack
-        remaining = min(total, remaining + giveBack)
-        state = .paused
+        if state == .finished {
+            // In overtime only the overtime part can be taken back; the planned time stays done.
+            accumulated -= min(idle, max(0, accumulated - total))
+            overtime = max(0, accumulated - total)
+        } else {
+            let giveBack = min(idle, accumulated)
+            accumulated -= giveBack
+            remaining = min(total, remaining + giveBack)
+            state = .paused
+        }
         idlePaused = true
         stopTicker()
         checkpoint()

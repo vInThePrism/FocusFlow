@@ -27,7 +27,7 @@ struct MenuBarLabel: View {
         HStack(spacing: 4) {
             Image(nsImage: MenuIcon.image)
             if showTime && engine.state != .idle {
-                Text(engine.state == .finished ? "Done" : Fmt.clock(engine.remaining))
+                Text(engine.state == .finished ? "+" + Fmt.clock(engine.overtime) : Fmt.clock(engine.remaining))
                     .monospacedDigit()
             }
         }
@@ -183,13 +183,17 @@ struct MenuBarPopover: View {
                     .font(.system(size: 15, weight: .medium))
                     .foregroundColor(Palette.ink)
                 Spacer()
-                Text("00:00")
+                Text("+" + Fmt.clock(engine.overtime))
                     .font(.system(size: 17, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundColor(Palette.ink)
+                    .foregroundColor(Palette.red)
             }
             .padding(.bottom, 4)
-            MenuRow(icon: "plus.circle", title: "+\(engine.extendStep) min", highlighted: true) {
+            Text("Still counting · \(Int(engine.activeSeconds / 60)) min focused")
+                .font(.system(size: 12))
+                .foregroundColor(Palette.inkSoft)
+                .padding(.bottom, 2)
+            MenuRow(icon: "plus.circle", title: "+\(engine.extendStep) min from now", highlighted: true) {
                 engine.extend()
             }
             .disabled(!engine.canExtend)

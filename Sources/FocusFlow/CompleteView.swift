@@ -11,7 +11,7 @@ struct CompleteView: View {
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(Palette.ink)
                 .padding(.top, 2)
-            Text("Great focus! What would you like to do next?")
+            Text("Great focus! The clock keeps running until you choose what's next.")
                 .font(.system(size: 15))
                 .foregroundColor(Palette.inkSoft)
                 .padding(.top, 6)
@@ -72,7 +72,7 @@ struct QuickExtendChips: View {
                     .font(.system(size: 16))
                     .foregroundColor(Palette.red)
                     .padding(.leading, 30)
-                Text("Add \(engine.extendStep) minutes\nrepeatedly\nas needed.")
+                Text("Adds time from\nright now —\nrepeat as needed.")
                     .font(.system(size: 12).italic())
                     .foregroundColor(Palette.inkSoft)
             }
@@ -103,38 +103,39 @@ struct NextStepCard: View {
 
     var body: some View {
         let step = engine.extendStep
+        let now = Int(engine.activeSeconds)
         VStack(spacing: 14) {
             VStack(spacing: 5) {
                 Text("Need a little more time?")
                     .font(.system(size: 19, weight: .bold))
                     .foregroundColor(Palette.ink)
-                Text("Stay in the zone or take a break. You can add \(step) minutes multiple times.")
+                Text("Time past 00:00 keeps counting as focus. +\(step) min starts from where you are now.")
                     .font(.system(size: 13))
                     .foregroundColor(Palette.inkSoft)
             }
             HStack(alignment: .top, spacing: 14) {
                 ActionTile(primary: true, icon: "plus.circle", title: "+\(step) min",
-                           caption: "Keep going\n(adds \(step) minutes)", enabled: engine.canExtend) {
+                           caption: "Keep going\n(\(step) more from now)", enabled: engine.canExtend) {
                     engine.extend()
                 }
                 ActionTile(icon: "cup.and.saucer", title: "Start break", caption: "Take a refreshing\nbreak") {
                     engine.startBreak(nil)
                 }
-                ActionTile(icon: "checkmark.circle", title: "Finish session", caption: "End this focus session") {
+                ActionTile(icon: "checkmark.circle", title: "Finish session", caption: "Save \(Int(engine.activeSeconds / 60)) min and stop") {
                     engine.finishSession()
                 }
             }
             Rectangle().fill(Palette.stroke).frame(height: 1)
             VStack(alignment: .leading, spacing: 8) {
-                Text("Preview after extending")
+                Text("Total focus time if you extend now")
                     .font(.system(size: 12))
                     .foregroundColor(Palette.inkSoft)
                 HStack(spacing: 0) {
-                    PreviewRing(minutes: 0, label: "Current", chips: 0, step: step)
+                    PreviewRing(seconds: now, label: "Now", chips: 0, step: step)
                     arrow
-                    PreviewRing(minutes: step, label: "After 1 extension", chips: 1, step: step)
+                    PreviewRing(seconds: now + step * 60, label: "After 1 extension", chips: 1, step: step)
                     arrow
-                    PreviewRing(minutes: step * 2, label: "After 2 extensions", chips: 2, step: step)
+                    PreviewRing(seconds: now + step * 120, label: "After 2 extensions", chips: 2, step: step)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -190,7 +191,7 @@ struct ActionTile: View {
 }
 
 struct PreviewRing: View {
-    let minutes: Int
+    let seconds: Int
     let label: String
     let chips: Int
     let step: Int
@@ -200,7 +201,7 @@ struct PreviewRing: View {
             ZStack {
                 Circle()
                     .stroke(chips == 0 ? Palette.track : Palette.red, lineWidth: 3)
-                Text(String(format: "%02d:00", minutes))
+                Text(Fmt.clock(TimeInterval(seconds)))
                     .font(.system(size: 15, weight: .bold))
                     .monospacedDigit()
                     .foregroundColor(Palette.ink)

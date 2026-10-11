@@ -46,9 +46,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         registerCategories(step: step)
         let body: String
         if intention.isEmpty {
-            body = "Great focus — \(minutes) minutes. Add \(step) more minutes or take a break."
+            body = "Great focus — \(minutes) minutes. The clock keeps counting until you add \(step) more or take a break."
         } else {
-            body = "Great work! You focused for \(minutes) minutes on “\(intention)”."
+            body = "Great work! \(minutes) minutes on “\(intention)”. Still counting until you choose."
         }
         post(title: "Session complete! 🎉", body: body, category: ID.focusDone)
     }

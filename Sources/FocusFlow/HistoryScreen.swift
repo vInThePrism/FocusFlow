@@ -238,8 +238,8 @@ struct HistoryScreen: View {
                         .foregroundColor(Palette.muted)
                         .help(r.note)
                 }
-                if r.extensions > 0 {
-                    Text("+\(r.extensionSeconds / 60)m")
+                if r.phase == .focus && r.extendedSeconds >= 60 {
+                    Text("+\(r.extendedSeconds / 60)m")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(Palette.red)
                         .padding(.horizontal, 5)

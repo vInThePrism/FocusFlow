@@ -233,15 +233,23 @@ struct TimerDial: View {
 
     private var label: some View {
         VStack(spacing: 6) {
-            Text(finished ? "00:00" : Fmt.clock(engine.remaining))
+            Text(finished ? "+" + Fmt.clock(engine.overtime) : Fmt.clock(engine.remaining))
                 .font(.system(size: size * 0.235, weight: .bold))
                 .monospacedDigit()
                 .tracking(-1)
-                .foregroundColor(Palette.ink)
-            Text(finished ? "Time's up! 🎉" : "of \(Int((engine.total / 60).rounded())) minutes")
+                .foregroundColor(finished ? Palette.red : Palette.ink)
+            Text(finished ? "Time's up! 🎉 Still counting" : "of \(Int((engine.total / 60).rounded())) minutes")
                 .font(.system(size: max(13, size * 0.06)))
                 .foregroundColor(Palette.inkSoft)
-            if engine.state == .paused {
+            if finished {
+                Text("\(Int(engine.activeSeconds / 60)) min focused so far")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Palette.red)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Palette.blush))
+            }
+            if engine.state == .paused || (finished && engine.idlePaused) {
                 Text(engine.idlePaused ? "Paused while you were away" : "Paused")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Palette.red)

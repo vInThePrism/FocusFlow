@@ -528,7 +528,7 @@ struct TodayTimelineCard: View {
                         .font(.system(size: 11))
                         .foregroundColor(Palette.muted)
                 }
-                Text(engine.canExtend ? "Ready to extend" : "Ready for a break")
+                Text("Still counting · +\(Fmt.clock(engine.overtime))")
                     .font(.system(size: 12))
                     .foregroundColor(Palette.inkSoft)
             }
