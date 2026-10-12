@@ -75,7 +75,7 @@ struct TodayPlanCard: View {
                 HStack(spacing: 10) {
                     Image(systemName: "book")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Palette.red)
+                        .foregroundColor(Palette.accentText)
                     Text("Study time")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(Palette.ink)
@@ -151,7 +151,7 @@ struct PlanTaskRow: View {
             }
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
             .strokeBorder(linked ? Palette.red.opacity(0.45) : Palette.stroke, lineWidth: linked ? 1.5 : 1))
     }
@@ -304,7 +304,7 @@ struct WhatIDidCard: View {
                     .background(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                            .foregroundColor(Color(hex: 0xE2D3CC))
+                            .foregroundColor(Palette.dashed)
                     )
                     .contentShape(Rectangle())
                 }
@@ -334,7 +334,7 @@ struct WhatIDidCard: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 30)
-        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(item.rest ? Color(hex: 0xF1EBE8) : Palette.blush))
+        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(item.rest ? Palette.restFill : Palette.blush))
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(item.rest ? Palette.muted.opacity(0.6) : Palette.red)
@@ -380,7 +380,7 @@ struct TodayCard: View {
                 HStack(spacing: 10) {
                     Image(systemName: "scope")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(Palette.red)
+                        .foregroundColor(Palette.accentText)
                     Text("Focus goal")
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(Palette.ink)
@@ -435,7 +435,7 @@ struct StatMini: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 20))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                 Text(title)
                     .font(.system(size: 12))
                     .foregroundColor(Palette.inkSoft)
@@ -522,7 +522,7 @@ struct WeekBars: View {
         return VStack(spacing: 8) {
             ZStack(alignment: .bottom) {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(Color(hex: 0xF9E3DB))
+                    .fill(Palette.weekGhost)
                     .frame(height: height(d.focus + d.breaks))
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(isToday ? AnyShapeStyle(Palette.redGradient) : AnyShapeStyle(Palette.salmon))

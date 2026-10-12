@@ -141,7 +141,7 @@ struct HistoryScreen: View {
             }
             .padding(.horizontal, 14)
             .frame(width: 250, height: 38)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.stroke))
             Button {
                 draft = ManualDraft.fresh(taskID: engine.linkedTaskID)
@@ -241,7 +241,7 @@ struct HistoryScreen: View {
                 if r.phase == .focus && r.extendedSeconds >= 60 {
                     Text("+\(r.extendedSeconds / 60)m")
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(Palette.red)
+                        .foregroundColor(Palette.accentText)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Palette.blush))
@@ -278,8 +278,8 @@ struct HistoryScreen: View {
 
     private func typeBadge(_ r: SessionRecord) -> some View {
         let (label, fg, bg): (String, Color, Color) = r.isManual
-            ? ("Manual", Color(hex: 0x4A6FA5), Color(hex: 0xE4EBF6))
-            : (r.phase == .focus ? ("Focus", Palette.red, Palette.blush) : ("Break", Palette.inkSoft, Color(hex: 0xF1EBE8)))
+            ? ("Manual", Palette.manualFg, Palette.manualBg)
+            : (r.phase == .focus ? ("Focus", Palette.red, Palette.blush) : ("Break", Palette.inkSoft, Palette.restFill))
         return Text(label)
             .font(.system(size: 11, weight: .medium))
             .foregroundColor(fg)
@@ -445,7 +445,7 @@ struct ManualRecordPanel: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Palette.card))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.stroke))
-        .shadow(color: Color(hex: 0x8A5A4A, opacity: 0.22), radius: 24, y: 10)
+        .shadow(color: Palette.panelShadow, radius: 24, y: 10)
     }
 
     private var durationBox: some View {
@@ -467,13 +467,13 @@ struct ManualRecordPanel: View {
             }
             .padding(.horizontal, 12)
             .frame(height: 38)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Palette.surface))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Palette.stroke))
             .fixedSize()
             if !valid {
                 Text("End time must be after start time (up to 16 hours).")
                     .font(.system(size: 11))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
             }
         }
         .padding(12)
@@ -525,7 +525,7 @@ struct ManualRecordPanel: View {
                 }
             }
             .padding(10)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Palette.surface))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Palette.stroke))
             HStack {
                 Spacer()

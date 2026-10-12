@@ -72,7 +72,7 @@ struct PhaseTabs: View {
             }
         }
         .padding(5)
-        .background(Capsule().fill(Color(hex: 0xF5EAE4)))
+        .background(Capsule().fill(Palette.tabTrack))
     }
 
     private func tab(_ p: Phase) -> some View {
@@ -178,7 +178,7 @@ struct TimerDial: View {
         ZStack {
             if showsHalo { halo }
             Circle()
-                .fill(Color.white.opacity(0.5))
+                .fill(Palette.surface.opacity(0.5))
                 .frame(width: size - lineWidth * 2, height: size - lineWidth * 2)
             Circle()
                 .stroke(Palette.track, lineWidth: lineWidth)
@@ -214,7 +214,7 @@ struct TimerDial: View {
     private var ticks: some View {
         ForEach(0..<4, id: \.self) { i in
             Capsule()
-                .fill(Color(hex: 0xDCCBC4))
+                .fill(Palette.tick)
                 .frame(width: 2, height: 9)
                 .offset(y: -(radius - lineWidth - 8))
                 .rotationEffect(.degrees(Double(i) * 90))
@@ -226,7 +226,7 @@ struct TimerDial: View {
         return Circle()
             .fill(Palette.coral)
             .frame(width: lineWidth + 10, height: lineWidth + 10)
-            .overlay(Circle().strokeBorder(Color.white, lineWidth: 4))
+            .overlay(Circle().strokeBorder(Palette.surface, lineWidth: 4))
             .shadow(color: Palette.red.opacity(0.3), radius: 4, y: 2)
             .offset(x: CGFloat(sin(angle)) * radius, y: -CGFloat(cos(angle)) * radius)
     }
@@ -244,7 +244,7 @@ struct TimerDial: View {
             if finished {
                 Text("\(Int(engine.activeSeconds / 60)) min focused so far")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(Capsule().fill(Palette.blush))
@@ -252,7 +252,7 @@ struct TimerDial: View {
             if engine.state == .paused || (finished && engine.idlePaused) {
                 Text(engine.idlePaused ? "Paused while you were away" : "Paused")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(Capsule().fill(Palette.blush))
@@ -277,7 +277,7 @@ struct PomodoroDots: View {
             HStack(spacing: 13) {
                 ForEach(0..<Pref.cycleLength, id: \.self) { i in
                     Circle()
-                        .fill(i < engine.pomodoroIndex ? Palette.red : Color(hex: 0xEADCD6))
+                        .fill(i < engine.pomodoroIndex ? Palette.red : Palette.dotOff)
                         .frame(width: 13, height: 13)
                 }
             }
@@ -310,7 +310,7 @@ struct ControlsRow: View {
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(Palette.ink)
                         .frame(width: 62, height: 62)
-                        .background(Circle().fill(Color.white))
+                        .background(Circle().fill(Palette.surface))
                         .overlay(Circle().strokeBorder(Palette.stroke))
                         .shadow(color: Palette.shadow, radius: 6, y: 3)
                 }
@@ -350,7 +350,7 @@ struct ControlsRow: View {
                     } label: {
                         Text("Skip break")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Palette.red)
+                            .foregroundColor(Palette.accentText)
                             .frame(width: 112, height: 58)
                             .background(Capsule().fill(Palette.blush))
                     }
@@ -372,7 +372,7 @@ struct ExtendCluster: View {
         } label: {
             Text("+\(engine.extendStep) min")
                 .font(.system(size: 19, weight: .semibold))
-                .foregroundColor(Palette.red)
+                .foregroundColor(Palette.accentText)
                 .frame(width: 112, height: 58)
                 .background(Capsule().fill(Palette.blush))
         }
@@ -395,8 +395,8 @@ struct ExtendCluster: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(Palette.inkSoft)
                         .frame(width: 28, height: 24)
-                        .background(Circle().fill(Color(hex: 0xF4ECE8)))
-                        .overlay(Circle().strokeBorder(Color.white, lineWidth: 1.5))
+                        .background(Circle().fill(Palette.chipOff))
+                        .overlay(Circle().strokeBorder(Palette.surface, lineWidth: 1.5))
                 }
                 if engine.extensions > 3 {
                     Text("×\(engine.extensions)")
@@ -466,7 +466,7 @@ struct LinkTaskMenu: View {
         .frame(maxWidth: 200)
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
-        .background(Capsule().fill(Color.white))
+        .background(Capsule().fill(Palette.surface))
         .overlay(Capsule().strokeBorder(linked == nil ? Palette.stroke : Palette.red.opacity(0.5)))
         .help(linked == nil ? "Count this focus time toward a plan task" : "Focus time counts toward \(linked?.name ?? "")")
     }

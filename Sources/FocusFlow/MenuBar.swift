@@ -41,6 +41,7 @@ struct MenuBarPopover: View {
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var store: Store
     @AppStorage(Pref.miniTimer) private var mini = false
+    @AppStorage(Pref.colorTheme) private var theme = ColorTheme.tomato.rawValue
 
     private var finished: Bool { engine.phase == .focus && engine.state == .finished }
 
@@ -57,7 +58,8 @@ struct MenuBarPopover: View {
         .padding(18)
         .frame(width: 330)
         .background(Palette.card)
-        .preferredColorScheme(.light)
+        .id(theme)
+        .preferredColorScheme(ColorTheme.current.scheme)
     }
 
     // MARK: Normal
@@ -102,7 +104,7 @@ struct MenuBarPopover: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(Palette.ink)
                         .frame(width: 48, height: 48)
-                        .background(Circle().fill(Color.white))
+                        .background(Circle().fill(Palette.surface))
                         .overlay(Circle().strokeBorder(Palette.stroke))
                 }
                 .buttonStyle(PressStyle())
@@ -160,7 +162,7 @@ struct MenuBarPopover: View {
                     engine.startBreak(.longBreak)
                 }
             }
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.stroke))
         }
     }
@@ -186,7 +188,7 @@ struct MenuBarPopover: View {
                 Text("+" + Fmt.clock(engine.overtime))
                     .font(.system(size: 17, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
             }
             .padding(.bottom, 4)
             Text("Still counting · \(Int(engine.activeSeconds / 60)) min focused")

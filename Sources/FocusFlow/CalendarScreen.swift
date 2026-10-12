@@ -90,7 +90,7 @@ struct CalendarScreen: View {
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundColor(Palette.red)
+                .foregroundColor(Palette.accentText)
                 .frame(width: 26, height: 26)
                 .contentShape(Rectangle())
         }
@@ -105,7 +105,7 @@ struct CalendarScreen: View {
                 Circle().fill(Palette.red).frame(width: 8, height: 8)
                 Circle().fill(Palette.salmon.opacity(0.7)).frame(width: 8, height: 8)
             }), "Focus sessions", "Manual log · timer")
-            legendItem(AnyView(Image(systemName: "flag.fill").foregroundColor(Palette.red)),
+            legendItem(AnyView(Image(systemName: "flag.fill").foregroundColor(Palette.accentText)),
                        "Deadline / Important", "Upcoming or due date")
             Spacer()
         }
@@ -180,7 +180,7 @@ struct MonthGrid: View {
                     .frame(maxHeight: tall ? CGFloat(260) : CGFloat.infinity)
                 }
             }
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.surface))
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.stroke))
             if tall { Spacer(minLength: 0) }
@@ -238,7 +238,7 @@ struct DayCell: View {
                             .strikethrough(d.done)
                             .lineLimit(1)
                     }
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 3)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -268,7 +268,7 @@ struct DayCell: View {
         }
         .padding(7)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(isSelected ? Palette.blush.opacity(0.75) : (inMonth ? Color.white : Color(hex: 0xFBF7F5)))
+        .background(isSelected ? Palette.blush.opacity(0.75) : (inMonth ? Palette.surface : Palette.outMonth))
         .overlay(Rectangle().strokeBorder(Palette.stroke.opacity(0.8), lineWidth: 0.5))
         .contentShape(Rectangle())
     }
@@ -324,7 +324,7 @@ struct DeadlineRow: View {
             } label: {
                 Image(systemName: deadline.done ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 20))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
             }
             .buttonStyle(.plain)
             .help(deadline.done ? "Mark as not done" : "Mark as done")
@@ -332,7 +332,7 @@ struct DeadlineRow: View {
                 HStack(spacing: 5) {
                     Image(systemName: deadline.kind.icon)
                         .font(.system(size: 10))
-                        .foregroundColor(Palette.red)
+                        .foregroundColor(Palette.accentText)
                     Text(deadline.title)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Palette.ink)
@@ -373,14 +373,14 @@ struct DeadlinesCard: View {
             HStack {
                 Image(systemName: "flag.fill")
                     .font(.system(size: 18))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                 Text("Deadlines (\(list.count))")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(Palette.ink)
                 Spacer()
                 Button("+ Add") { onAdd() }
                     .buttonStyle(SmallButtonStyle())
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
             }
             if list.isEmpty {
                 Text("Nothing due this day.")
@@ -410,7 +410,7 @@ struct DailyGoalsCard: View {
             HStack {
                 Image(systemName: "scope")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                 Text("Daily goals")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(Palette.ink)
@@ -422,7 +422,7 @@ struct DailyGoalsCard: View {
             HStack(spacing: 10) {
                 Image(systemName: "book")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .frame(width: 20)
                 Text("Study time")
                     .font(.system(size: 13, weight: .semibold))
@@ -518,7 +518,7 @@ struct CompletionSummaryCard: View {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "sun.horizon")
                         .font(.system(size: 24))
-                        .foregroundColor(Palette.red)
+                        .foregroundColor(Palette.accentText)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title(fraction, s.total))
                             .font(.system(size: 13, weight: .semibold))

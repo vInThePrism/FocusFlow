@@ -78,7 +78,7 @@ struct TaskRow: View {
         HStack(spacing: 12) {
             Image(systemName: task.icon)
                 .font(.system(size: 19))
-                .foregroundColor(Palette.red)
+                .foregroundColor(Palette.accentText)
                 .frame(width: 30)
             VStack(alignment: .leading, spacing: 3) {
                 Text(task.name)
@@ -130,7 +130,7 @@ struct TaskRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Palette.stroke))
         .opacity(task.enabled ? 1 : 0.55)
         .contentShape(Rectangle())
@@ -172,7 +172,7 @@ struct BulkApplyCard: View {
                 }
             }
             .frame(height: 118)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.stroke))
 
             HStack(spacing: 12) {
@@ -226,7 +226,7 @@ struct BulkApplyCard: View {
                         VStack(spacing: 4) {
                             Image(systemName: TaskIcons.guess(p.name))
                                 .font(.system(size: 15))
-                                .foregroundColor(Palette.red)
+                                .foregroundColor(Palette.accentText)
                             Text(p.name)
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(Palette.ink)
@@ -237,7 +237,7 @@ struct BulkApplyCard: View {
                         }
                         .frame(width: 76)
                         .padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Palette.surface))
                         .help(p.note.isEmpty ? p.name : "\(p.name) — \(p.note)")
                     }
                 }
@@ -329,7 +329,7 @@ struct DaySchedule: View {
                             .background(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                                     .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                                    .foregroundColor(Color(hex: 0xE2D3CC))
+                                    .foregroundColor(Palette.dashed)
                             )
                             .contentShape(Rectangle())
                     }
@@ -445,7 +445,7 @@ struct BlockCard: View {
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity)
         .frame(height: height)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(rest ? Color(hex: 0xF1EBE8) : Palette.blush))
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(rest ? Palette.restFill : Palette.blush))
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(rest ? Palette.muted.opacity(0.6) : Palette.red)
@@ -502,7 +502,7 @@ struct WeekSchedule: View {
                         }
                     }
                     .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Palette.surface))
                     .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Palette.stroke))
                 }
             }

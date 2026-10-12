@@ -10,6 +10,7 @@ A native macOS pomodoro timer (SwiftUI, no third-party code).
 - **Link session to task**: focus time counts toward a plan task; "Today's plan" and "What I did" on the Focus page
 - **Calendar + DDL**: month/week/list view with daily completion rings, focus dots and deadlines
 - **History + manual log**: search, filter, and add past focus sessions by hand (optionally left out of stats)
+- Three color themes — Tomato, Pink and a dark Purple (Settings → Appearance, or the ••• menu)
 - Menu bar timer, floating mini timer, notifications with "+5 more" / "Take break"
 
 ## Install

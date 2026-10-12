@@ -63,7 +63,7 @@ struct ScopeTabs: View {
             }
         }
         .padding(5)
-        .background(Capsule().fill(Color(hex: 0xF5EAE4)))
+        .background(Capsule().fill(Palette.tabTrack))
     }
 
     private func tab(_ s: StatsScope) -> some View {
@@ -125,7 +125,7 @@ struct DateNavigator: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Capsule().fill(Color.white))
+        .background(Capsule().fill(Palette.surface))
         .overlay(Capsule().strokeBorder(Palette.stroke))
     }
 
@@ -137,7 +137,7 @@ struct DateNavigator: View {
         } label: {
             Image(systemName: name)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(Palette.red)
+                .foregroundColor(Palette.accentText)
                 .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
         }
@@ -318,7 +318,7 @@ struct DayTimeline: View {
                 let w = g.size.width
                 ZStack(alignment: .topLeading) {
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(Color(hex: 0xFBF2ED))
+                        .fill(Palette.timelineBg)
                         .frame(width: w, height: 62)
                     ForEach(marks, id: \.self) { h in
                         Rectangle()
@@ -466,14 +466,14 @@ struct GoalCard: View {
                 Button("Edit goal") { editing = true }
                     .buttonStyle(.plain)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .popover(isPresented: $editing, arrowEdge: .bottom) {
                         GoalEditor(hours: $weeklyHours)
                     }
             }
             HStack(alignment: .center, spacing: 22) {
                 ZStack {
-                    Circle().stroke(Color(hex: 0xF8E4DC), lineWidth: 20)
+                    Circle().stroke(Palette.donutTrack, lineWidth: 20)
                     Circle()
                         .trim(from: 0, to: CGFloat(min(1, fraction)))
                         .stroke(Palette.redGradient, style: StrokeStyle(lineWidth: 20, lineCap: .round))
@@ -497,7 +497,7 @@ struct GoalCard: View {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "scope")
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(Palette.red)
+                            .foregroundColor(Palette.accentText)
                         Text(fraction >= 1
                              ? "You reached your \(scope.goalWord) goal. Wonderful!"
                              : "You’re \(pct)% to your \(scope.goalWord) goal. Keep going!")
@@ -588,7 +588,7 @@ struct TypeRow: View {
                 .frame(width: 130, alignment: .leading)
             GeometryReader { g in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color(hex: 0xF6EAE4))
+                    Capsule().fill(Palette.typeTrack)
                     Capsule().fill(color).frame(width: fraction > 0 ? max(8, g.size.width * CGFloat(fraction)) : 0)
                 }
             }
@@ -661,9 +661,7 @@ struct CalendarCard: View {
     let a: Analytics
     @Binding var month: Date
 
-    private static let levels: [Color] = [
-        Color(hex: 0xF4E9E4), Color(hex: 0xF8CDC1), Color(hex: 0xF3A08F), Color(hex: 0xEA685B), Color(hex: 0xD93A31),
-    ]
+    private static var levels: [Color] { Palette.heat }
 
     private func level(_ seconds: Int) -> Int {
         let m = seconds / 60
@@ -731,7 +729,7 @@ struct CalendarCard: View {
         } label: {
             Image(systemName: name)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(Palette.red)
+                .foregroundColor(Palette.accentText)
                 .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
         }
@@ -822,7 +820,7 @@ struct MonthlyCard: View {
                     }
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Palette.surface))
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Palette.stroke))
                     .shadow(color: Palette.shadow, radius: 6, y: 2)
                     .fixedSize()
@@ -854,7 +852,7 @@ struct MonthlyCard: View {
         } label: {
             Image(systemName: name)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(Palette.red)
+                .foregroundColor(Palette.accentText)
                 .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
         }

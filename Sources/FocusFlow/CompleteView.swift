@@ -33,7 +33,7 @@ struct CompleteView: View {
 
 struct Confetti: View {
     var radius: CGFloat
-    private static let colors: [Color] = [Palette.red, Palette.orange, Palette.coral, Palette.gold, Palette.salmon]
+    private static var colors: [Color] { [Palette.red, Palette.orange, Palette.coral, Palette.gold, Palette.salmon] }
 
     var body: some View {
         ZStack {
@@ -70,7 +70,7 @@ struct QuickExtendChips: View {
             VStack(alignment: .leading, spacing: 4) {
                 Image(systemName: "arrow.turn.left.up")
                     .font(.system(size: 16))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .padding(.leading, 30)
                 Text("Adds time from\nright now —\nrepeat as needed.")
                     .font(.system(size: 12).italic())
@@ -141,7 +141,7 @@ struct NextStepCard: View {
             }
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Palette.surface))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Palette.stroke))
     }
 
@@ -173,7 +173,7 @@ struct ActionTile: View {
                 .foregroundColor(primary ? .white : Palette.ink)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .background(Capsule().fill(primary ? AnyShapeStyle(Palette.redGradient) : AnyShapeStyle(Color.white)))
+                .background(Capsule().fill(primary ? AnyShapeStyle(Palette.redGradient) : AnyShapeStyle(Palette.surface)))
                 .overlay(Capsule().strokeBorder(primary ? Color.clear : Palette.stroke))
                 .shadow(color: primary ? Palette.red.opacity(0.3) : Palette.shadow, radius: 8, y: 4)
                 .contentShape(Capsule())
@@ -213,7 +213,7 @@ struct PreviewRing: View {
                         ForEach(0..<chips, id: \.self) { _ in
                             Text(chips == 1 ? "+\(step) min" : "+\(step)")
                                 .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(Palette.red)
+                                .foregroundColor(Palette.accentText)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
                                 .background(Capsule().fill(Palette.blush))

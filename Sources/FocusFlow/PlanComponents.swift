@@ -54,11 +54,11 @@ struct WeekdayChips: View {
 
     private func chipFill(on: Bool, isToday: Bool) -> AnyShapeStyle {
         if style == .short {
-            return on ? AnyShapeStyle(Palette.redGradient) : AnyShapeStyle(Color(hex: 0xF4ECE8))
+            return on ? AnyShapeStyle(Palette.redGradient) : AnyShapeStyle(Palette.chipOff)
         }
         if isToday && on { return AnyShapeStyle(Palette.redGradient) }
         if on { return AnyShapeStyle(Palette.blush) }
-        return AnyShapeStyle(Color(hex: 0xF6F0ED))
+        return AnyShapeStyle(Palette.chipOff)
     }
 
     private func chipText(on: Bool, isToday: Bool) -> Color {
@@ -81,7 +81,7 @@ struct TaskStatusCircle: View {
                     .font(.system(size: size * 0.42, weight: .bold))
                     .foregroundColor(.white)
             } else {
-                Circle().stroke(fraction > 0 ? Palette.track : Color(hex: 0xC9B8B2), lineWidth: size * 0.1)
+                Circle().stroke(fraction > 0 ? Palette.track : Palette.circleOff, lineWidth: size * 0.1)
                 if fraction > 0 {
                     Circle()
                         .trim(from: 0, to: CGFloat(fraction))
@@ -114,7 +114,7 @@ struct FormField<Content: View>: View {
             }
             .padding(.horizontal, 12)
             .frame(minHeight: 38)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Palette.surface))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Palette.stroke))
         }
     }
@@ -142,7 +142,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .foregroundColor(Palette.ink)
             .padding(.horizontal, 20)
             .padding(.vertical, 11)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Palette.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Palette.stroke))
             .opacity(configuration.isPressed ? 0.85 : 1)
     }
@@ -183,7 +183,7 @@ struct CapsuleTabs<T: Hashable>: View {
             }
         }
         .padding(4)
-        .background(Capsule().fill(Color(hex: 0xF5EAE4)))
+        .background(Capsule().fill(Palette.tabTrack))
     }
 }
 
@@ -217,9 +217,9 @@ struct DayNavigator: View {
         } label: {
             Image(systemName: name)
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(Palette.red)
+                .foregroundColor(Palette.accentText)
                 .frame(width: 30, height: 30)
-                .background(Circle().fill(Color.white))
+                .background(Circle().fill(Palette.surface))
                 .overlay(Circle().strokeBorder(Palette.stroke))
         }
         .buttonStyle(.plain)
@@ -291,7 +291,7 @@ struct TaskEditor: View {
                         dismiss()
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                 }
                 Spacer()
                 Button("Cancel") { dismiss() }
@@ -309,7 +309,7 @@ struct TaskEditor: View {
         .padding(24)
         .frame(width: 440)
         .background(Palette.card)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(ColorTheme.current.scheme)
     }
 }
 
@@ -371,7 +371,7 @@ struct BlockEditor: View {
             if !valid {
                 Text("End time must be after start time.")
                     .font(.system(size: 12))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
             }
             HStack {
                 if !isNew {
@@ -380,7 +380,7 @@ struct BlockEditor: View {
                         dismiss()
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                 }
                 Spacer()
                 Button("Cancel") { dismiss() }
@@ -403,7 +403,7 @@ struct BlockEditor: View {
         .padding(22)
         .frame(width: 380)
         .background(Palette.card)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(ColorTheme.current.scheme)
         .onAppear {
             startTime = block.start
             endTime = block.end
@@ -479,7 +479,7 @@ struct DeadlineEditor: View {
                         dismiss()
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                 }
                 Spacer()
                 Button("Cancel") { dismiss() }
@@ -499,7 +499,7 @@ struct DeadlineEditor: View {
         .padding(22)
         .frame(width: 460)
         .background(Palette.card)
-        .preferredColorScheme(.light)
+        .preferredColorScheme(ColorTheme.current.scheme)
         .onAppear {
             day = deadline.date
             time = deadline.hasTime ? deadline.date : (Calendar.current.date(bySettingHour: 23, minute: 59, second: 0, of: deadline.date) ?? deadline.date)

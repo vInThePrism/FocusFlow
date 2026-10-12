@@ -29,7 +29,7 @@ final class MiniTimerController {
             p.hasShadow = false
             p.isMovableByWindowBackground = true
             p.hidesOnDeactivate = false
-            p.appearance = NSAppearance(named: .aqua)
+            p.appearance = NSAppearance(named: ColorTheme.current.isDark ? .darkAqua : .aqua)
             let host = NSHostingView(rootView: MiniTimerView()
                 .environmentObject(AppModel.engine)
                 .environmentObject(AppModel.store))
@@ -41,6 +41,10 @@ final class MiniTimerController {
             panel = p
         }
         panel?.orderFrontRegardless()
+    }
+
+    func applyTheme() {
+        panel?.appearance = NSAppearance(named: ColorTheme.current.isDark ? .darkAqua : .aqua)
     }
 }
 
@@ -59,6 +63,7 @@ struct WindowDragArea: NSViewRepresentable {
 
 struct MiniTimerView: View {
     @EnvironmentObject var engine: Engine
+    @AppStorage(Pref.colorTheme) private var theme = ColorTheme.tomato.rawValue
 
     private var subtitle: String {
         switch engine.phase {
@@ -84,7 +89,7 @@ struct MiniTimerView: View {
                     if engine.state != .running {
                         Image(systemName: engine.state == .finished ? "plus" : "play.fill")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Palette.red)
+                            .foregroundColor(Palette.accentText)
                     }
                 }
                 .frame(width: 56, height: 56)
@@ -110,9 +115,9 @@ struct MiniTimerView: View {
             } label: {
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .frame(width: 50, height: 50)
-                    .background(Circle().fill(Color.white))
+                    .background(Circle().fill(Palette.surface))
                     .shadow(color: Palette.shadow, radius: 6, y: 2)
             }
             .buttonStyle(.plain)
@@ -120,14 +125,15 @@ struct MiniTimerView: View {
         }
         .padding(.leading, 22)
         .padding(.trailing, 18)
+        .id(theme)
         .frame(width: 380, height: 96)
         .background(WindowDragArea())
         .background(
             Capsule()
                 .fill(Palette.card)
-                .shadow(color: Color(hex: 0x8A5A4A, opacity: 0.22), radius: 16, y: 8)
+                .shadow(color: Palette.panelShadow, radius: 16, y: 8)
         )
-        .overlay(Capsule().strokeBorder(Color.white.opacity(0.8)))
+        .overlay(Capsule().strokeBorder(Palette.surface.opacity(0.8)))
         .padding(24)
         .contextMenu {
             Button(engine.state == .running ? "Pause" : "Start / Resume") { engine.toggle() }
@@ -135,6 +141,6 @@ struct MiniTimerView: View {
             Divider()
             Button("Hide Mini Timer") { UserDefaults.standard.set(false, forKey: Pref.miniTimer) }
         }
-        .preferredColorScheme(.light)
+        .preferredColorScheme(ColorTheme.current.scheme)
     }
 }

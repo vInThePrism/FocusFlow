@@ -111,10 +111,10 @@ struct LandscapeView: View {
         GeometryReader { g in
             ZStack(alignment: .topLeading) {
                 Ridge(points: far, smooth: false)
-                    .fill(LinearGradient(colors: [Color(hex: 0xF0BBAA, opacity: 0.7), Color(hex: 0xF7DCD2, opacity: 0.5)],
+                    .fill(LinearGradient(colors: [Palette.landFar.0, Palette.landFar.1],
                                          startPoint: .top, endPoint: .bottom))
                 Ridge(points: mid)
-                    .fill(LinearGradient(colors: [Color(hex: 0xEDAE9C), Color(hex: 0xF5D3C7)],
+                    .fill(LinearGradient(colors: [Palette.landMid.0, Palette.landMid.1],
                                          startPoint: .top, endPoint: .bottom))
                 ForEach(trees.indices, id: \.self) { i in
                     let t = trees[i]
@@ -125,7 +125,7 @@ struct LandscapeView: View {
                         .position(x: t.x * g.size.width, y: t.base * g.size.height - h / 2 + h * 0.08)
                 }
                 Ridge(points: near)
-                    .fill(LinearGradient(colors: [Color(hex: 0xF8E5DC), Color(hex: 0xFCF3EE)],
+                    .fill(LinearGradient(colors: [Palette.landNear.0, Palette.landNear.1],
                                          startPoint: .top, endPoint: .bottom))
             }
         }

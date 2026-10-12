@@ -17,6 +17,7 @@ struct SettingsScreen: View {
     @AppStorage(Pref.menuBarTime) private var menuBarTime = true
     @AppStorage(Pref.miniTimer) private var miniTimer = false
     @State private var activeTile: Phase = .focus
+    @AppStorage(Pref.colorTheme) private var theme = ColorTheme.tomato.rawValue
 
     var body: some View {
         ScrollView {
@@ -30,6 +31,14 @@ struct SettingsScreen: View {
                         .foregroundColor(Palette.inkSoft)
                 }
                 .padding(.bottom, 8)
+
+                SettingRow(title: "Appearance", icon: "paintpalette.fill") {
+                    HStack(spacing: 12) {
+                        ForEach(ColorTheme.allCases) { t in
+                            ThemeSwatch(theme: t, selected: theme == t.rawValue) { theme = t.rawValue }
+                        }
+                    }
+                }
 
                 lengthsCard
 
@@ -157,7 +166,7 @@ struct LengthTile: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Color.white : Palette.blushLight.opacity(0.6)))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Palette.surface : Palette.blushLight.opacity(0.6)))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? Palette.red : Palette.stroke, lineWidth: on ? 2 : 1))
         .contentShape(Rectangle())
         .onTapGesture { active = phase }
@@ -258,7 +267,7 @@ struct DataPanel: View {
             if let problem = store.problem {
                 Text(problem)
                     .font(.system(size: 12))
-                    .foregroundColor(Palette.red)
+                    .foregroundColor(Palette.accentText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack(spacing: 8) {
@@ -279,5 +288,65 @@ struct DataPanel: View {
                 .font(.system(size: 11))
                 .foregroundColor(Palette.muted)
         }
+    }
+}
+
+/// A small preview of a color theme.
+struct ThemeSwatch: View {
+    let theme: ColorTheme
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let c = theme.colors
+        let accent = LinearGradient(colors: [Color(hex: c.redTop), Color(hex: c.redBottom)], startPoint: .top, endPoint: .bottom)
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color(hex: c.sidebarBottom))
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Capsule().fill(accent).frame(width: 44, height: 11)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Color(hex: c.card))
+                            .frame(height: 16)
+                            .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(Color(hex: c.stroke)))
+                        Capsule()
+                            .fill(Color(hex: c.barTrack))
+                            .frame(height: 5)
+                            .overlay(alignment: .leading) {
+                                Capsule().fill(Color(hex: c.red)).frame(width: 30)
+                            }
+                    }
+                    Circle()
+                        .trim(from: 0, to: 0.84)
+                        .stroke(accent, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-62))
+                        .frame(width: 24, height: 24)
+                        .padding(.leading, 4)
+                }
+                .padding(8)
+                .frame(height: 66)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: c.canvas)))
+                HStack {
+                    Text(theme.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Palette.ink)
+                    Spacer()
+                    if selected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(Color(hex: c.red))
+                    }
+                }
+            }
+            .padding(10)
+            .frame(width: 170)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Palette.surface))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(selected ? Color(hex: c.red) : Palette.stroke, lineWidth: selected ? 2 : 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

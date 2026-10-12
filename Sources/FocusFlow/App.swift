@@ -62,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func syncMiniTimer() {
         MiniTimerController.shared.setVisible(Pref.bool(Pref.miniTimer))
+        MiniTimerController.shared.applyTheme()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
@@ -112,6 +113,7 @@ struct FocusFlowApp: App {
 struct RootView: View {
     @EnvironmentObject var nav: Nav
     @Environment(\.openWindow) private var openWindow
+    @AppStorage(Pref.colorTheme) private var theme = ColorTheme.tomato.rawValue
 
     var body: some View {
         HStack(spacing: 0) {
@@ -130,9 +132,10 @@ struct RootView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .id(theme)
         .frame(minWidth: 1160, minHeight: 800)
         .ignoresSafeArea()
-        .preferredColorScheme(.light)
+        .preferredColorScheme(ColorTheme.current.scheme)
         .onAppear {
             AppModel.openMain = { openWindow(id: "main") }
         }
@@ -228,9 +231,15 @@ struct MoreMenu: View {
     @EnvironmentObject var engine: Engine
     @EnvironmentObject var store: Store
     @AppStorage(Pref.miniTimer) private var mini = false
+    @AppStorage(Pref.colorTheme) private var theme = ColorTheme.tomato.rawValue
 
     var body: some View {
         Menu {
+            Picker("Color Theme", selection: $theme) {
+                ForEach(ColorTheme.allCases) { t in
+                    Text(t.title).tag(t.rawValue)
+                }
+            }
             Toggle("Floating Mini Timer", isOn: $mini)
             Button("Reset Pomodoro Cycle") { engine.resetCycle() }
             Divider()
