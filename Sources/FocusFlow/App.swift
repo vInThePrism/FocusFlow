@@ -4,7 +4,7 @@ import Combine
 import UniformTypeIdentifiers
 
 enum Page: String, CaseIterable, Identifiable {
-    case focus = "Focus", plan = "Plan", calendar = "Calendar", stats = "Stats", history = "History", settings = "Settings"
+    case focus = "Focus", plan = "Plan", leetcode = "LeetCode", applications = "Applications", calendar = "Calendar", stats = "Stats", history = "History", settings = "Settings"
 
     var id: String { rawValue }
 
@@ -12,6 +12,8 @@ enum Page: String, CaseIterable, Identifiable {
         switch self {
         case .focus: return "clock"
         case .plan: return "checklist"
+        case .leetcode: return "chevron.left.forwardslash.chevron.right"
+        case .applications: return "briefcase"
         case .calendar: return "calendar"
         case .stats: return selected ? "chart.bar.fill" : "chart.bar"
         case .history: return "clock.arrow.circlepath"
@@ -23,6 +25,12 @@ enum Page: String, CaseIterable, Identifiable {
 @MainActor
 final class Nav: ObservableObject {
     @Published var page: Page = .focus
+    @Published var applicationID: UUID?
+
+    func showApplication(_ id: UUID) {
+        applicationID = id
+        page = .applications
+    }
 }
 
 @MainActor
@@ -111,6 +119,8 @@ struct FocusFlowApp: App {
 // MARK: - Main window
 
 struct RootView: View {
+    @EnvironmentObject var engine: Engine
+    @EnvironmentObject var store: Store
     @EnvironmentObject var nav: Nav
     @Environment(\.openWindow) private var openWindow
     @AppStorage(Pref.colorTheme) private var theme = ColorTheme.tomato.rawValue
@@ -124,6 +134,8 @@ struct RootView: View {
                 switch nav.page {
                 case .focus: FocusScreen()
                 case .plan: PlanScreen()
+                case .leetcode: LeetCodeScreen()
+                case .applications: ApplicationsScreen()
                 case .calendar: CalendarScreen()
                 case .stats: StatsScreen()
                 case .history: HistoryScreen()
@@ -136,6 +148,11 @@ struct RootView: View {
         .frame(minWidth: 1160, minHeight: 800)
         .ignoresSafeArea()
         .preferredColorScheme(ColorTheme.current.scheme)
+        .sheet(isPresented: Binding(get: { engine.pendingProblemSessionID != nil }, set: { if !$0 { engine.answerProblem(.skipped) } })) {
+            LCResultSheet()
+                .environmentObject(engine)
+                .environmentObject(store)
+        }
         .onAppear {
             AppModel.openMain = { openWindow(id: "main") }
         }

@@ -28,6 +28,7 @@ struct ManualDraft: Identifiable {
     var taskID: UUID?
     var note: String
     var counts: Bool
+    var problemID: String? = nil
 
     static func fresh(taskID: UUID?) -> ManualDraft {
         let cal = Calendar.current
@@ -39,7 +40,7 @@ struct ManualDraft: Identifiable {
     }
 
     static func editing(_ r: SessionRecord) -> ManualDraft {
-        ManualDraft(existing: r, day: r.start, start: r.start, end: r.end, taskID: r.taskID, note: r.note, counts: r.countsInStats)
+        ManualDraft(existing: r, day: r.start, start: r.start, end: r.end, taskID: r.taskID, note: r.note, counts: r.countsInStats, problemID: r.problemID)
     }
 }
 
@@ -58,6 +59,7 @@ struct HistoryScreen: View {
     @State private var deleting: SessionRecord?
 
     private func title(_ r: SessionRecord) -> String {
+        if let p = store.leetcode.problem(r.problemID) { return p.displayTitle + (r.problemOutcome.map { " · " + ($0 == .skipped ? "Skipped result" : $0.title) } ?? "") }
         if let t = store.task(r.taskID) { return t.name }
         switch r.phase {
         case .focus: return r.intention.isEmpty ? (r.isManual ? "Manual focus" : "Focus session") : r.intention
@@ -408,6 +410,14 @@ struct ManualRecordPanel: View {
                         .font(.system(size: 11))
                         .foregroundColor(Palette.muted)
                         .padding(.top, -8)
+                    FormField(label: "LeetCode problem (optional)", icon: "chevron.left.forwardslash.chevron.right") {
+                        Picker("Problem", selection: $draft.problemID) {
+                            Text("No problem").tag(String?.none)
+                            ForEach(store.leetcode.problems) { p in
+                                Text(p.displayTitle).tag(String?.some(p.id))
+                            }
+                        }.labelsHidden().pickerStyle(.menu)
+                    }
                     noteField
                     HStack(alignment: .top, spacing: 12) {
                         Toggle("", isOn: $draft.counts)
@@ -578,7 +588,9 @@ struct ManualRecordPanel: View {
             taskID: draft.taskID,
             isManual: true,
             note: note,
-            countsInStats: draft.counts
+            countsInStats: draft.counts,
+            problemID: draft.problemID,
+            problemOutcome: draft.problemID == nil ? nil : (draft.existing?.problemID == draft.problemID ? (draft.existing?.problemOutcome ?? .skipped) : .skipped)
         )
         store.upsert(record)
         onClose()

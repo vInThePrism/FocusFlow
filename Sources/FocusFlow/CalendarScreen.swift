@@ -39,6 +39,8 @@ struct CalendarScreen: View {
                     DeadlinesCard(day: selected,
                                   onAdd: { sheet = DeadlineSheet(deadline: newDeadline(), isNew: true) },
                                   onEdit: { d in sheet = DeadlineSheet(deadline: d, isNew: false) })
+                    CalendarLeetCodeCard(day: selected)
+                    ApplicationDayCard(day: selected)
                     DailyGoalsCard(day: selected, logic: logic)
                     CompletionSummaryCard(day: selected, logic: logic)
                 }
@@ -51,7 +53,11 @@ struct CalendarScreen: View {
             if !cal.isDate(d, equalTo: month, toGranularity: .month) { month = d }
         }
         .sheet(item: $sheet) { s in
-            DeadlineEditor(deadline: s.deadline, isNew: s.isNew).environmentObject(store)
+            if s.deadline.applicationLink != nil {
+                ApplicationTaskEditor(deadline: s.deadline, isNew: s.isNew).environmentObject(store)
+            } else {
+                DeadlineEditor(deadline: s.deadline, isNew: s.isNew).environmentObject(store)
+            }
         }
     }
 
@@ -209,6 +215,7 @@ struct DayCell: View {
         let target = max(1, Pref.int(Pref.dailyStudyMinutes)) * 60
         let deadlines = store.deadlines.filter { cal.isDate($0.date, inSameDayAs: date) }
         let sessions = store.records.filter { $0.phase == .focus && $0.countsInStats && cal.isDate($0.start, inSameDayAs: date) }
+        let leetcode = store.leetcode.practicedProblems(on: date, granularity: .day, records: store.records)
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 if isToday {
@@ -254,6 +261,19 @@ struct DayCell: View {
             }
             .frame(maxWidth: .infinity)
             Spacer(minLength: 0)
+            if store.applications.total(on: date) > 0 && inMonth {
+                Label("\(store.applications.total(on: date))", systemImage: "briefcase")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(Palette.accentText)
+                    .help("Applications sent")
+            }
+            if !leetcode.isEmpty && inMonth {
+                Label("LC \(leetcode.count)", systemImage: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(Palette.accentText)
+                    .lineLimit(1)
+                    .help(leetcode.compactMap { store.leetcode.problem($0.problemID)?.displayTitle }.joined(separator: "\n"))
+            }
             if !sessions.isEmpty && inMonth {
                 HStack(spacing: 3) {
                     ForEach(Array(sessions.prefix(5).enumerated()), id: \.offset) { _, s in
@@ -314,6 +334,7 @@ struct DeadlineList: View {
 
 struct DeadlineRow: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var nav: Nav
     let deadline: Deadline
     var onEdit: () -> Void
 
@@ -337,6 +358,10 @@ struct DeadlineRow: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Palette.ink)
                         .strikethrough(deadline.done)
+                }
+                if let link = deadline.applicationLink {
+                    Button("Open application") { nav.showApplication(link.applicationID) }
+                        .buttonStyle(.plain).font(.caption).foregroundColor(Palette.accentText)
                 }
                 if !deadline.note.isEmpty {
                     Text(deadline.note)
@@ -548,5 +573,46 @@ struct CompletionSummaryCard: View {
     private func message(_ pct: Int, _ total: Int) -> String {
         if total == 0 { return "Add recurring tasks in Plan to track this day." }
         return "You completed \(pct)% of your daily plan."
+    }
+}
+
+
+struct CalendarLeetCodeCard: View {
+    @EnvironmentObject var store: Store
+    let day: Date
+
+    var body: some View {
+        let practiced = store.leetcode.practicedProblems(on: day, granularity: .day, records: store.records)
+        let completed = practiced.filter { $0.outcome.solved }.count
+        CardBox(spacing: 12) {
+            HStack {
+                Label("LeetCode", systemImage: "chevron.left.forwardslash.chevron.right")
+                    .font(.system(size: 16, weight: .bold))
+                Spacer()
+                Text("\(completed) completed / \(practiced.count) practiced")
+                    .font(.system(size: 11)).foregroundColor(Palette.inkSoft)
+            }
+            if practiced.isEmpty {
+                Text("No LeetCode problems recorded this day.")
+                    .font(.system(size: 13)).foregroundColor(Palette.muted)
+            } else {
+                ForEach(practiced) { attempt in
+                    if let problem = store.leetcode.problem(attempt.problemID) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: attempt.outcome.solved ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(Palette.accentText)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Link(problem.displayTitle, destination: problem.url)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Palette.ink)
+                                Text("\(problem.difficulty.rawValue) · \(attempt.outcome.status)")
+                                    .font(.system(size: 11)).foregroundColor(Palette.inkSoft)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+            }
+        }.foregroundColor(Palette.ink)
     }
 }

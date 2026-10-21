@@ -33,3 +33,18 @@ Saved only on this Mac, at `~/Library/Application Support/FocusFlow/sessions.jso
 - Deleting or reinstalling the app doesn't touch this folder.
 
 Settings → Data & backup lets you export JSON/CSV, import a backup, or move the data to another folder (for example iCloud Drive).
+
+## LeetCode
+
+- On first use, NeetCode 150 and Blind 75 are available offline. Problems shared between lists share notes and progress. Sources and pinned data revision are in `THIRD_PARTY_NOTICES.md`.
+- Choose a topic (NeetCode algorithm categories plus imported tags) and 2 / 3 / 5 / 8 problems, then generate a fixed daily queue. Regenerating requires confirmation and preserves all progress.
+- **Import problem** accepts a LeetCode `.com` or `.cn` problem URL. Known problems fill their metadata; unknown problems need a title and can include difficulty and topics. Imported lists open immediately.
+- **Import list** supports common lists, CSV/JSON, or one known problem URL/number per line. Public list URL support is limited to the bundled NeetCode 150 / Blind 75 snapshots; arbitrary shared lists are not scraped.
+- CSV headers: `url,title,difficulty,topics` (`id` may replace URL for known problems). Separate CSV topics with semicolons. JSON accepts an array of problem objects or `{ "name": "My list", "problems": [...] }`, with topics as an array or separated text. Unknown problems require a URL and title. Imports preview duplicates and rejected rows before saving.
+- Notes save automatically. **Record result** logs a solve without a timer. **Start Focus** uses the existing timer; finish/break/reset asks Yes / With hints / Not yet / Skip. Repeated extensions stay in one session. As before, unfinished timed sessions shorter than one minute are not retained.
+- Solves (independent or with hints) start reviews at 1 / 3 / 7 / 14 / 30 local calendar days. Again resets to the next day; Remembered advances, finishing after the final review. Review time never counts as a new problem automatically.
+- History manual records can optionally link a problem. Their existing statistics toggle still applies. All LeetCode data is included in existing JSON backup/export/import; CSV session export includes the associated problem and result.
+
+### Verification
+
+`swift test` runs the import, shared-progress, legacy-data, persistence, review-date and timer-association regressions. `bash build.sh` creates the app; `bash build.sh --install` replaces the installed app.

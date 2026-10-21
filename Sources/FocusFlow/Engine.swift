@@ -27,6 +27,9 @@ final class Engine: ObservableObject {
         didSet { UserDefaults.standard.set(linkedTaskID?.uuidString, forKey: Pref.linkedTask) }
     }
 
+    @Published private(set) var linkedProblemID: String?
+    @Published var pendingProblemSessionID: UUID?
+
     private let store: Store
     private var endDate: Date?
     private var recordID: UUID?
@@ -47,6 +50,7 @@ final class Engine: ObservableObject {
         linkedTaskID = UserDefaults.standard.string(forKey: Pref.linkedTask).flatMap { UUID(uuidString: $0) }
         loadCycle()
         prepare(.focus)
+        pendingProblemSessionID = store.records.first { $0.problemID != nil && $0.problemOutcome == nil }?.id
 
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
             .receive(on: RunLoop.main)
@@ -136,7 +140,8 @@ final class Engine: ObservableObject {
             extensions: extensions,
             activeSeconds: Int(activeSeconds.rounded()),
             completed: completedOnce,
-            taskID: phase == .focus ? linkedTaskID : nil
+            taskID: phase == .focus ? linkedTaskID : nil,
+            problemID: phase == .focus ? linkedProblemID : nil
         )
     }
 
@@ -147,6 +152,25 @@ final class Engine: ObservableObject {
         linkedTaskID = task?.id
         if let t = task { intention = t.name }
         if state != .idle && phase == .focus { checkpoint() }
+    }
+
+    /// Never relabel a running session when selecting another problem.
+    @discardableResult
+    func startProblem(_ problem: LCProblem) -> Bool {
+        guard state == .idle else { return false }
+        prepare(.focus)
+        linkedProblemID = problem.id
+        linkedTaskID = store.tasks.first { $0.enabled && $0.name.lowercased() == "leetcode practice" }?.id
+        intention = problem.displayTitle
+        start()
+        return true
+    }
+
+    func answerProblem(_ outcome: LCOutcome) {
+        if let id = pendingProblemSessionID, let record = store.records.first(where: { $0.id == id }), let problem = record.problemID {
+            store.recordProblemResult(problem, outcome: outcome, sessionID: id)
+        }
+        pendingProblemSessionID = store.records.first { $0.problemID != nil && $0.problemOutcome == nil && $0.id != recordID }?.id
     }
 
     func select(_ p: Phase) {
@@ -260,6 +284,7 @@ final class Engine: ObservableObject {
     }
 
     func saveOnQuit() {
+        store.flushProblemNotes()
         guard state != .idle else { return }
         commit()
     }
@@ -279,6 +304,7 @@ final class Engine: ObservableObject {
         remaining = planned
         extensionSeconds = 0
         extensions = 0
+        linkedProblemID = nil
         recordID = nil
         startDate = nil
         finishedAt = nil
@@ -383,6 +409,7 @@ final class Engine: ObservableObject {
         guard let r = liveRecord else { return }
         if r.activeSeconds >= 60 || r.completed {
             store.upsert(r)
+            if r.problemID != nil && r.problemOutcome == nil { pendingProblemSessionID = r.id }
         } else {
             store.delete(r.id)
         }

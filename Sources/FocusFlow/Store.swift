@@ -8,6 +8,8 @@ struct Payload {
     var blocks: [TimeBlock] = []
     var deadlines: [Deadline] = []
     var checks: [String: [UUID]] = [:]
+    var leetcode = LCState()
+    var applications = ApplicationState()
 }
 
 /// Saves sessions, plan tasks, time blocks and deadlines to a JSON file on this Mac.
@@ -24,6 +26,9 @@ final class Store: ObservableObject {
     @Published private(set) var blocks: [TimeBlock] = []
     @Published private(set) var deadlines: [Deadline] = []
     @Published private(set) var checks: [String: [UUID]] = [:]
+    @Published private(set) var leetcode = LCState()
+    @Published private(set) var applications = ApplicationState()
+    private var noteSave: Task<Void, Never>?
     @Published private(set) var lastSaved: Date?
     @Published private(set) var problem: String?
     @Published private(set) var folderURL: URL
@@ -47,6 +52,8 @@ final class Store: ObservableObject {
         var blocks: [TimeBlock]?
         var deadlines: [Deadline]?
         var checks: [String: [UUID]]?
+        var leetcode: LCState?
+        var applications: ApplicationState?
     }
 
     init() {
@@ -59,6 +66,7 @@ final class Store: ObservableObject {
         prepareFolder()
         load()
         importLegacyIfNeeded()
+        seedCommonListsIfNeeded()
     }
 
     // MARK: - Reading
@@ -76,7 +84,7 @@ final class Store: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
         if let body = try? decoder.decode(FileBody.self, from: data) {
             return Payload(sessions: body.sessions, tasks: body.tasks ?? [], blocks: body.blocks ?? [],
-                           deadlines: body.deadlines ?? [], checks: body.checks ?? [:])
+                           deadlines: body.deadlines ?? [], checks: body.checks ?? [:], leetcode: body.leetcode ?? LCState(), applications: body.applications ?? ApplicationState())
         }
         if let list = try? decoder.decode([SessionRecord].self, from: data) {
             return Payload(sessions: list)
@@ -90,10 +98,13 @@ final class Store: ObservableObject {
         blocks = p.blocks.sorted { $0.start < $1.start }
         deadlines = p.deadlines.sorted { $0.date < $1.date }
         checks = p.checks
+        leetcode = p.leetcode
+        applications = p.applications
+        repairApplicationLinks()
     }
 
     private var payload: Payload {
-        Payload(sessions: records, tasks: tasks, blocks: blocks, deadlines: deadlines, checks: checks)
+        Payload(sessions: records, tasks: tasks, blocks: blocks, deadlines: deadlines, checks: checks, leetcode: leetcode, applications: applications)
     }
 
     private func load() {
@@ -145,8 +156,8 @@ final class Store: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let body = FileBody(app: "FocusFlow", version: 2, savedAt: Date(), sessions: p.sessions,
-                            tasks: p.tasks, blocks: p.blocks, deadlines: p.deadlines, checks: p.checks)
+        let body = FileBody(app: "FocusFlow", version: 4, savedAt: Date(), sessions: p.sessions,
+                            tasks: p.tasks, blocks: p.blocks, deadlines: p.deadlines, checks: p.checks, leetcode: p.leetcode, applications: p.applications)
         return try encoder.encode(body)
     }
 
@@ -331,6 +342,14 @@ final class Store: ObservableObject {
             let existing = checks[key] ?? []
             checks[key] = existing + ids.filter { !existing.contains($0) }
         }
+        leetcode.merge(incoming.leetcode)
+        applications.merge(incoming.applications)
+        repairApplicationLinks()
+        for i in records.indices where records[i].problemOutcome == nil {
+            if let attempt = leetcode.attempts.first(where: { $0.sessionID == records[i].id && $0.problemID == records[i].problemID }) {
+                records[i].problemOutcome = attempt.outcome
+            }
+        }
         save()
         return added
     }
@@ -365,7 +384,7 @@ final class Store: ObservableObject {
     func exportCSV(to url: URL) throws {
         let iso = ISO8601DateFormatter()
         func quoted(_ s: String) -> String { "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
-        var lines = ["id,type,manual,intention,task,start,end,planned_min,extensions,extension_min,focused_min,completed,in_stats,note"]
+        var lines = ["id,type,manual,intention,task,start,end,planned_min,extensions,extension_min,focused_min,completed,in_stats,note,leetcode_problem,leetcode_result"]
         for r in records {
             let fields: [String] = [
                 r.id.uuidString,
@@ -382,6 +401,8 @@ final class Store: ObservableObject {
                 r.completed ? "yes" : "no",
                 r.countsInStats ? "yes" : "no",
                 quoted(r.note),
+                quoted(r.problemID ?? ""),
+                quoted(r.problemOutcome?.rawValue ?? ""),
             ]
             lines.append(fields.joined(separator: ","))
         }
@@ -423,5 +444,235 @@ final class Store: ObservableObject {
                           activeSeconds: $0.seconds, completed: true)
         }
         merge(Payload(sessions: converted))
+    }
+}
+
+// MARK: - LeetCode (same file, backups and export as existing focus records)
+extension Store {
+    @discardableResult
+    func importProblems(_ preview: LCImportPreview) -> String? {
+        guard !preview.problems.isEmpty, !preview.name.isEmpty else { return nil }
+        for p in preview.problems {
+            if let i = leetcode.problems.firstIndex(where: { $0.id == p.id }) {
+                if leetcode.problems[i].number == nil { leetcode.problems[i].number = p.number }
+            } else { leetcode.problems.append(p) }
+        }
+        let id = preview.listID ?? UUID().uuidString
+        if let index = leetcode.lists.firstIndex(where: { $0.id == id }) {
+            for p in preview.problems where !leetcode.lists[index].problemIDs.contains(p.id) {
+                leetcode.lists[index].problemIDs.append(p.id)
+            }
+        } else {
+            leetcode.lists.append(LCList(id: id, name: preview.name, source: preview.source,
+                                        importedAt: Date(), problemIDs: preview.problems.map(\.id)))
+        }
+        save()
+        return id
+    }
+
+    private func seedCommonListsIfNeeded() {
+        guard leetcode.commonListsSeeded != true, problem == nil else { return }
+        for p in LCCatalog.problems where leetcode.problem(p.id) == nil { leetcode.problems.append(p) }
+        for common in LCCatalog.lists where !leetcode.lists.contains(where: { $0.id == common.id }) {
+            leetcode.lists.append(LCList(id: common.id, name: common.name, source: LCCatalog.source,
+                                        importedAt: Date(), problemIDs: common.problemIDs))
+        }
+        leetcode.commonListsSeeded = true
+        save()
+    }
+
+    func setProblemNotes(_ id: String, _ text: String) {
+        guard leetcode.problem(id) != nil else { return }
+        leetcode.progress[id, default: LCProgress()].notes = text
+        noteSave?.cancel()
+        noteSave = Task { [weak self] in
+            do { try await Task.sleep(nanoseconds: 400_000_000) } catch { return }
+            self?.save()
+        }
+    }
+
+    func flushProblemNotes() {
+        noteSave?.cancel()
+        noteSave = nil
+        save()
+    }
+
+    func generateProblems(topic: String, count: Int, now: Date = Date()) {
+        let key = PlanLogic.key(now)
+        leetcode.topic = topic
+        leetcode.targetCount = count
+        leetcode.queues[key] = LCDailyQueue(date: key, topic: topic, targetCount: count,
+                                          problemIDs: leetcode.recommendations(topic: topic, count: count), generatedAt: now)
+        save()
+    }
+
+    func addProblemToToday(_ id: String, now: Date = Date()) {
+        guard leetcode.problem(id) != nil else { return }
+        let key = PlanLogic.key(now)
+        var queue = leetcode.queues[key] ?? LCDailyQueue(date: key, topic: "Any topic", targetCount: 1,
+                                                        problemIDs: [], generatedAt: now)
+        guard !queue.problemIDs.contains(id) else { return }
+        queue.problemIDs.append(id)
+        queue.targetCount = max(queue.targetCount, queue.problemIDs.count)
+        leetcode.queues[key] = queue
+        save()
+    }
+
+    func recordProblemResult(_ id: String, outcome: LCOutcome, sessionID: UUID? = nil, now: Date = Date()) {
+        guard leetcode.problem(id) != nil else { return }
+        // A checkpoint, extended timer or repeated sheet action must never duplicate the attempt.
+        if let sessionID = sessionID {
+            guard let index = records.firstIndex(where: { $0.id == sessionID && $0.problemID == id }) else { return }
+            if let existing = leetcode.attempts.first(where: { $0.sessionID == sessionID }) {
+                records[index].problemOutcome = existing.outcome
+                save()
+                return
+            }
+            records[index].problemOutcome = outcome
+        }
+        leetcode.attempts.append(LCAttempt(problemID: id, timestamp: now, outcome: outcome, sessionID: sessionID))
+        var progress = leetcode.progressFor(id)
+        progress.lastAttemptAt = now
+        // A later failed practice does not erase a previous successful solve.
+        if outcome != .skipped && (!progress.outcome.solved || outcome == .yes) { progress.outcome = outcome }
+        if outcome.solved && progress.nextReviewDate == nil && progress.reviewStage == 0 {
+            progress.nextReviewDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now))
+        }
+        leetcode.progress[id] = progress
+        save()
+    }
+
+    func setProblemCompleted(_ id: String, completed: Bool) {
+        guard leetcode.problem(id) != nil, leetcode.progressFor(id).outcome.solved != completed else { return }
+        if completed {
+            recordProblemResult(id, outcome: .yes)
+        } else {
+            // Undo the latest completion only; earlier practice dates remain intact.
+            if let index = leetcode.attempts.indices.filter({
+                leetcode.attempts[$0].problemID == id && leetcode.attempts[$0].outcome.solved
+                    && leetcode.attempts[$0].completionUndone != true
+            }).max(by: { leetcode.attempts[$0].timestamp < leetcode.attempts[$1].timestamp }) {
+                leetcode.attempts[index].completionUndone = true
+            }
+            leetcode.progress[id, default: LCProgress()].outcome = .notYet
+            leetcode.progress[id, default: LCProgress()].nextReviewDate = nil
+            leetcode.progress[id, default: LCProgress()].reviewStage = 0
+            save()
+        }
+    }
+
+    func reviewProblem(_ id: String, remembered: Bool, now: Date = Date(), calendar: Calendar = .current) {
+        guard leetcode.due(on: now, calendar: calendar).contains(where: { $0.id == id }) else { return }
+        var progress = leetcode.progressFor(id)
+        let intervals = [1, 3, 7, 14, 30]
+        progress.reviewStage = remembered ? min(progress.reviewStage + 1, intervals.count) : 0
+        progress.nextReviewDate = progress.reviewStage < intervals.count
+            ? calendar.date(byAdding: .day, value: intervals[progress.reviewStage], to: calendar.startOfDay(for: now)) : nil
+        leetcode.progress[id] = progress
+        leetcode.reviews.append(LCReview(problemID: id, timestamp: now, remembered: remembered))
+        save()
+    }
+}
+
+// MARK: - Applications
+extension Store {
+    func setApplicationCountOnlyMode(_ enabled: Bool) {
+        applications.countOnlyMode = enabled
+        save()
+    }
+
+    @discardableResult
+    func setDailyApplicationCount(_ count: Int, on day: Date) -> String? {
+        guard count >= 0, Calendar.current.startOfDay(for: day) <= Calendar.current.startOfDay(for: Date()) else {
+            return "Enter a non-negative whole number for today or a past date."
+        }
+        let detailed = applications.sent(on: day).count
+        guard count >= detailed else { return "This day already has \(detailed) detailed applications. The total must include them." }
+        var counts = applications.dailyCounts ?? [:]
+        counts[ApplicationDay.key(day)] = count
+        applications.dailyCounts = counts
+        save()
+        return nil
+    }
+
+    func incrementDailyApplicationCount(_ amount: Int, on day: Date = Date()) {
+        let (count, overflow) = applications.total(on: day).addingReportingOverflow(amount)
+        guard !overflow else { return }
+        _ = setDailyApplicationCount(count, on: day)
+    }
+
+    func saveApplication(_ value: JobApplication) -> String? {
+        var value = value
+        value.company = value.company.trimmingCharacters(in: .whitespacesAndNewlines)
+        value.role = value.role.trimmingCharacters(in: .whitespacesAndNewlines)
+        value.url = value.url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.company.isEmpty, !value.role.isEmpty else { return "Company and role are required." }
+        guard let date = ApplicationDay.date(value.appliedOn), date <= Calendar.current.startOfDay(for: Date()) else {
+            return "Choose a valid application date up to today."
+        }
+        guard value.stages.filter({ $0.kind != .applied }).allSatisfy({ $0.occurredAt >= date && $0.occurredAt <= Date() }) else {
+            return "A stage occurs before this application date. Edit that stage first."
+        }
+        if let initial = value.stages.firstIndex(where: { $0.kind == .applied }) {
+            value.stages[initial].occurredAt = date
+        } else { value.stages.append(ApplicationStage(kind: .applied, occurredAt: date)) }
+        value.updatedAt = Date()
+        if let i = applications.applications.firstIndex(where: { $0.id == value.id }) { applications.applications[i] = value }
+        else { applications.applications.append(value) }
+        save()
+        return nil
+    }
+
+    func deleteApplication(_ id: UUID) {
+        applications.applications.removeAll { $0.id == id }
+        deadlines.removeAll { $0.applicationLink?.applicationID == id }
+        save()
+    }
+
+    func saveApplicationStage(_ stage: ApplicationStage, applicationID: UUID) -> String? {
+        guard let i = applications.applications.firstIndex(where: { $0.id == applicationID }),
+              let start = ApplicationDay.date(applications.applications[i].appliedOn) else { return "Application no longer exists." }
+        guard stage.kind != .applied else { return "Edit the application date to change the Applied stage." }
+        guard stage.occurredAt >= start && stage.occurredAt <= Date() else { return "Stage date must be between the application date and now." }
+        var stage = stage
+        stage.customLabel = stage.customLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard stage.kind != .other || !stage.customLabel.isEmpty else { return "Enter a stage name." }
+        if let j = applications.applications[i].stages.firstIndex(where: { $0.id == stage.id }) {
+            applications.applications[i].stages[j] = stage
+        } else { applications.applications[i].stages.append(stage) }
+        applications.applications[i].updatedAt = Date()
+        save()
+        return nil
+    }
+
+    func deleteApplicationStage(_ id: UUID, applicationID: UUID) {
+        guard let i = applications.applications.firstIndex(where: { $0.id == applicationID }) else { return }
+        guard applications.applications[i].stages.contains(where: { $0.id == id && $0.kind != .applied }) else { return }
+        applications.applications[i].stages.removeAll { $0.id == id }
+        applications.applications[i].updatedAt = Date()
+        for j in deadlines.indices where deadlines[j].applicationLink?.applicationID == applicationID && deadlines[j].applicationLink?.stageID == id {
+            deadlines[j].applicationLink?.stageID = nil
+        }
+        save()
+    }
+
+    func setApplicationGoal(_ target: Int?, now: Date = Date()) {
+        guard target == nil || target! > 0 else { return }
+        let day = ApplicationDay.key(now)
+        if let i = applications.dailyGoalChanges.firstIndex(where: { $0.effectiveOn == day }) {
+            applications.dailyGoalChanges[i].target = target
+            applications.dailyGoalChanges[i].updatedAt = now
+        } else { applications.dailyGoalChanges.append(DailyApplicationGoalChange(effectiveOn: day, target: target, updatedAt: now)) }
+        save()
+    }
+
+    private func repairApplicationLinks() {
+        for i in deadlines.indices {
+            guard let link = deadlines[i].applicationLink else { continue }
+            guard let application = applications.application(link.applicationID) else { deadlines[i].applicationLink = nil; continue }
+            if let stageID = link.stageID, !application.stages.contains(where: { $0.id == stageID }) {
+                deadlines[i].applicationLink?.stageID = nil
+            }
+        }
     }
 }

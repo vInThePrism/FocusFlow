@@ -13,6 +13,8 @@ struct StatsScreen: View {
             VStack(spacing: 16) {
                 header
                 KPIRow(a: a, scope: scope, anchor: anchor)
+                LCStatsSummary(scope: scope, anchor: anchor)
+                ApplicationStatsCard(scope: scope, anchor: anchor)
                 HStack(alignment: .top, spacing: 16) {
                     PrimaryChartCard(a: a, scope: scope, anchor: anchor)
                     GoalCard(a: a, scope: scope, anchor: anchor)
@@ -857,5 +859,47 @@ struct MonthlyCard: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+
+struct LCStatsSummary: View {
+    @EnvironmentObject var store: Store
+    let scope: StatsScope
+    let anchor: Date
+
+    var body: some View {
+        let cal = Calendar.current
+        let practiced = store.leetcode.practicedProblems(on: anchor, granularity: scope.component, records: store.records)
+        let completed = practiced.filter { $0.outcome.solved }
+        let reviews = store.leetcode.reviews.filter { cal.isDate($0.timestamp, equalTo: anchor, toGranularity: scope.component) }.count
+        let seconds = store.records.filter {
+            $0.phase == .focus && $0.countsInStats && $0.problemID != nil
+                && cal.isDate($0.start, equalTo: anchor, toGranularity: scope.component)
+        }.reduce(0) { $0 + $1.activeSeconds }
+        CardBox(spacing: 14) {
+            HStack {
+                Label("LeetCode", systemImage: "chevron.left.forwardslash.chevron.right").font(.headline)
+                Spacer()
+                Text(scope == .day ? "Selected day" : (scope == .month ? "Selected month" : "Selected year"))
+                    .font(.caption).foregroundColor(Palette.inkSoft)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("\(completed.count)").font(.system(size: 30, weight: .bold)).foregroundColor(Palette.accentText)
+                Text("problems completed").font(.subheadline)
+                Spacer()
+                Text("\(practiced.count) practiced · \(reviews) reviews").font(.subheadline).foregroundColor(Palette.inkSoft)
+            }
+            HStack(spacing: 24) {
+                ForEach([LCDifficulty.easy, .medium, .hard]) { difficulty in
+                    let count = completed.filter { store.leetcode.problem($0.problemID)?.difficulty == difficulty }.count
+                    Text("\(difficulty.rawValue)  \(count)").font(.system(size: 13, weight: .medium))
+                }
+                let unknown = completed.filter { store.leetcode.problem($0.problemID)?.difficulty == .unknown }.count
+                if unknown > 0 { Text("Unknown  \(unknown)").font(.system(size: 13, weight: .medium)) }
+                Spacer()
+                Text("\(Fmt.hm(seconds)) focus").font(.caption).foregroundColor(Palette.inkSoft)
+            }
+        }.foregroundColor(Palette.ink)
     }
 }

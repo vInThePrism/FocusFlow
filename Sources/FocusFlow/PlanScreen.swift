@@ -14,6 +14,7 @@ struct PlanScreen: View {
                 VStack(alignment: .leading, spacing: 18) {
                     StudyTargetCard(logic: logic)
                     tasksCard(logic)
+                    ApplicationTasksCard(day: day)
                     BulkApplyCard()
                 }
                 .padding(.vertical, 24)
@@ -68,6 +69,7 @@ struct PlanScreen: View {
 }
 
 struct TaskRow: View {
+    @EnvironmentObject var nav: Nav
     @EnvironmentObject var store: Store
     let task: PlanTask
     let logic: PlanLogic
@@ -85,6 +87,10 @@ struct TaskRow: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Palette.ink)
                     .lineLimit(1)
+                if task.name.lowercased() == "leetcode practice" {
+                    Button("Open today's problems") { nav.page = .leetcode }
+                        .buttonStyle(.link).font(.caption)
+                }
                 Text(task.note.isEmpty ? " " : task.note)
                     .font(.system(size: 12))
                     .foregroundColor(Palette.inkSoft)

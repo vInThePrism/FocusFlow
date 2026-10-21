@@ -59,13 +59,15 @@ struct SessionRecord: Codable, Identifiable, Hashable {
     var note = ""
     /// Off = kept in History but left out of stats and task progress.
     var countsInStats = true
+    var problemID: String? = nil
+    var problemOutcome: LCOutcome? = nil
 
     var baseSeconds: Int { min(activeSeconds, plannedSeconds) }
     var extendedSeconds: Int { max(0, activeSeconds - plannedSeconds) }
 
     enum CodingKeys: String, CodingKey {
         case id, phase, intention, start, end, plannedSeconds, extensionSeconds, extensions, activeSeconds, completed
-        case taskID, isManual, note, countsInStats
+        case taskID, isManual, note, countsInStats, problemID, problemOutcome
     }
 }
 
@@ -83,6 +85,8 @@ extension SessionRecord {
         extensionSeconds = (try? c.decode(Int.self, forKey: .extensionSeconds)) ?? 0
         extensions = (try? c.decode(Int.self, forKey: .extensions)) ?? 0
         completed = (try? c.decode(Bool.self, forKey: .completed)) ?? true
+        problemID = try c.decodeIfPresent(String.self, forKey: .problemID)
+        problemOutcome = try c.decodeIfPresent(LCOutcome.self, forKey: .problemOutcome)
         taskID = try? c.decode(UUID.self, forKey: .taskID)
         isManual = (try? c.decode(Bool.self, forKey: .isManual)) ?? false
         note = (try? c.decode(String.self, forKey: .note)) ?? ""

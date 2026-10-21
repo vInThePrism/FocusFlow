@@ -66,6 +66,7 @@ struct Deadline: Codable, Identifiable, Hashable {
     var note: String = ""
     var kind: Kind = .deadline
     var done = false
+    var applicationLink: ApplicationTaskLink? = nil
 }
 
 // MARK: - Weekdays
