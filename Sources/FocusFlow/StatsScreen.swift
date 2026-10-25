@@ -13,6 +13,7 @@ struct StatsScreen: View {
             VStack(spacing: 16) {
                 header
                 KPIRow(a: a, scope: scope, anchor: anchor)
+                InterviewStatsSection(scope: scope, anchor: anchor)
                 LCStatsSummary(scope: scope, anchor: anchor)
                 ApplicationStatsCard(scope: scope, anchor: anchor)
                 HStack(alignment: .top, spacing: 16) {

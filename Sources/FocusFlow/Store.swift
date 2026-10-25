@@ -10,6 +10,7 @@ struct Payload {
     var checks: [String: [UUID]] = [:]
     var leetcode = LCState()
     var applications = ApplicationState()
+    var interviewEntries: [InterviewEntry] = []
 }
 
 /// Saves sessions, plan tasks, time blocks and deadlines to a JSON file on this Mac.
@@ -28,6 +29,7 @@ final class Store: ObservableObject {
     @Published private(set) var checks: [String: [UUID]] = [:]
     @Published private(set) var leetcode = LCState()
     @Published private(set) var applications = ApplicationState()
+    @Published private(set) var interviewEntries: [InterviewEntry] = []
     private var noteSave: Task<Void, Never>?
     @Published private(set) var lastSaved: Date?
     @Published private(set) var problem: String?
@@ -54,6 +56,7 @@ final class Store: ObservableObject {
         var checks: [String: [UUID]]?
         var leetcode: LCState?
         var applications: ApplicationState?
+        var interviewEntries: [InterviewEntry]?
     }
 
     init() {
@@ -84,7 +87,7 @@ final class Store: ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
         if let body = try? decoder.decode(FileBody.self, from: data) {
             return Payload(sessions: body.sessions, tasks: body.tasks ?? [], blocks: body.blocks ?? [],
-                           deadlines: body.deadlines ?? [], checks: body.checks ?? [:], leetcode: body.leetcode ?? LCState(), applications: body.applications ?? ApplicationState())
+                           deadlines: body.deadlines ?? [], checks: body.checks ?? [:], leetcode: body.leetcode ?? LCState(), applications: body.applications ?? ApplicationState(), interviewEntries: body.interviewEntries ?? [])
         }
         if let list = try? decoder.decode([SessionRecord].self, from: data) {
             return Payload(sessions: list)
@@ -100,11 +103,13 @@ final class Store: ObservableObject {
         checks = p.checks
         leetcode = p.leetcode
         applications = p.applications
+        interviewEntries = p.interviewEntries
+        repairInterviewLinks()
         repairApplicationLinks()
     }
 
     private var payload: Payload {
-        Payload(sessions: records, tasks: tasks, blocks: blocks, deadlines: deadlines, checks: checks, leetcode: leetcode, applications: applications)
+        Payload(sessions: records, tasks: tasks, blocks: blocks, deadlines: deadlines, checks: checks, leetcode: leetcode, applications: applications, interviewEntries: interviewEntries)
     }
 
     private func load() {
@@ -156,8 +161,8 @@ final class Store: ObservableObject {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let body = FileBody(app: "FocusFlow", version: 4, savedAt: Date(), sessions: p.sessions,
-                            tasks: p.tasks, blocks: p.blocks, deadlines: p.deadlines, checks: p.checks, leetcode: p.leetcode, applications: p.applications)
+        let body = FileBody(app: "FocusFlow", version: 5, savedAt: Date(), sessions: p.sessions,
+                            tasks: p.tasks, blocks: p.blocks, deadlines: p.deadlines, checks: p.checks, leetcode: p.leetcode, applications: p.applications, interviewEntries: p.interviewEntries)
         return try encoder.encode(body)
     }
 
@@ -193,12 +198,14 @@ final class Store: ObservableObject {
             records.append(record)
             records.sort { $0.start < $1.start }
         }
+        repairInterviewLinks()
         save()
     }
 
     func delete(_ id: UUID) {
         guard records.contains(where: { $0.id == id }) else { return }
         records.removeAll { $0.id == id }
+        interviewEntries.removeAll { $0.sessionID == id }
         save()
     }
 
@@ -240,6 +247,7 @@ final class Store: ObservableObject {
 
     func deleteTask(_ id: UUID) {
         tasks.removeAll { $0.id == id }
+        interviewEntries.removeAll { $0.taskID == id }
         save()
     }
 
@@ -343,6 +351,12 @@ final class Store: ObservableObject {
             checks[key] = existing + ids.filter { !existing.contains($0) }
         }
         leetcode.merge(incoming.leetcode)
+        var entries = Dictionary(interviewEntries.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for entry in incoming.interviewEntries {
+            if entries[entry.id] == nil || entry.updatedAt > entries[entry.id]!.updatedAt { entries[entry.id] = entry }
+        }
+        interviewEntries = Array(entries.values)
+        repairInterviewLinks()
         applications.merge(incoming.applications)
         repairApplicationLinks()
         for i in records.indices where records[i].problemOutcome == nil {
@@ -673,6 +687,63 @@ extension Store {
             if let stageID = link.stageID, !application.stages.contains(where: { $0.id == stageID }) {
                 deadlines[i].applicationLink?.stageID = nil
             }
+        }
+    }
+}
+
+// MARK: - Interview Preparation (counts never carry session duration)
+extension Store {
+    func interviewSummary(taskID: UUID? = nil, sessions: [SessionRecord]? = nil) -> InterviewSummary {
+        let ids = taskID.map { Set([$0]) } ?? Set(tasks.filter(\.isInterviewPreparation).map(\.id))
+        let linked = (sessions ?? records).filter { $0.taskID.map(ids.contains) == true }
+        let included = Set(linked.filter { $0.countsInStats && $0.phase == .focus }.map(\.id))
+        return InterviewSummary(entries: interviewEntries.filter {
+            ids.contains($0.taskID) && ($0.sessionID == nil || included.contains($0.sessionID!))
+        }, sessions: linked)
+    }
+
+    @discardableResult
+    func saveInterviewEntry(_ entry: InterviewEntry) -> Bool {
+        guard entry.quantity > 0, task(entry.taskID) != nil else { return false }
+        var entry = entry
+        if let sessionID = entry.sessionID {
+            guard let session = records.first(where: { $0.id == sessionID && $0.phase == .focus && $0.taskID == entry.taskID }) else { return false }
+            entry.occurredAt = session.start
+        }
+        entry.notes = entry.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        entry.updatedAt = Date()
+        if let index = interviewEntries.firstIndex(where: { $0.id == entry.id }) { interviewEntries[index] = entry }
+        else { interviewEntries.append(entry) }
+        save()
+        return true
+    }
+
+    func deleteInterviewEntry(_ id: UUID) {
+        interviewEntries.removeAll { $0.id == id }
+        save()
+    }
+
+    func addInterviewItems(_ items: [InterviewDraft], to session: SessionRecord, source: InterviewEntry.Source) {
+        guard task(session.taskID)?.isInterviewPreparation == true, let taskID = session.taskID else { return }
+        for item in items where item.valid && item.hasOutput {
+            guard let category = item.category else { continue }
+            saveInterviewEntry(InterviewEntry(taskID: taskID, sessionID: session.id, occurredAt: session.start,
+                category: category, quantity: item.quantity, notes: item.notes, source: source))
+        }
+    }
+
+    private func repairInterviewLinks() {
+        let taskIDs = Set(tasks.map(\.id))
+        let sessions = Dictionary(records.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        interviewEntries = interviewEntries.compactMap { entry in
+            guard taskIDs.contains(entry.taskID), entry.quantity > 0 else { return nil }
+            var entry = entry
+            if let id = entry.sessionID {
+                guard let session = sessions[id], session.phase == .focus, let taskID = session.taskID, taskIDs.contains(taskID) else { return nil }
+                entry.taskID = taskID
+                entry.occurredAt = session.start
+            }
+            return entry
         }
     }
 }

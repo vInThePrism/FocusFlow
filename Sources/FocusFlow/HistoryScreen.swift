@@ -57,6 +57,7 @@ struct HistoryScreen: View {
     @State private var renaming: SessionRecord?
     @State private var renameText = ""
     @State private var deleting: SessionRecord?
+    @State private var interviewSession: SessionRecord?
 
     private func title(_ r: SessionRecord) -> String {
         if let p = store.leetcode.problem(r.problemID) { return p.displayTitle + (r.problemOutcome.map { " · " + ($0 == .skipped ? "Skipped result" : $0.title) } ?? "") }
@@ -100,6 +101,9 @@ struct HistoryScreen: View {
                     .padding(.bottom, 16)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
+        }
+        .sheet(item: $interviewSession) { session in
+            InterviewSessionEditor(session: session).environmentObject(store)
         }
         .animation(.easeOut(duration: 0.2), value: draft?.id)
         .alert("Rename session", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
@@ -312,6 +316,9 @@ struct HistoryScreen: View {
             }
         }
         if r.phase == .focus {
+            if store.task(r.taskID)?.isInterviewPreparation == true {
+                Button("Preparation details…") { interviewSession = r }
+            }
             Menu("Link to task") {
                 Button("No task") { relink(r, nil) }
                 ForEach(store.tasks) { t in
@@ -339,11 +346,19 @@ struct ManualRecordPanel: View {
     @EnvironmentObject var store: Store
     @State var draft: ManualDraft
     var onClose: () -> Void
+    @State private var interviewItems = [InterviewDraft()]
+    @State private var quantityOnly = false
+    @State private var preparationDetails = false
 
+    private var isInterview: Bool { store.task(draft.taskID)?.isInterviewPreparation == true }
+    private var onlyOutput: Bool { isInterview && quantityOnly }
     private var start: Date { combine(day: draft.day, time: draft.start) }
     private var end: Date { combine(day: draft.day, time: draft.end) }
     private var seconds: Int { Int(end.timeIntervalSince(start)) }
-    private var valid: Bool { seconds >= 60 && seconds <= 16 * 3600 }
+    private var valid: Bool {
+        let timeValid = onlyOutput ? true : (seconds >= 60 && seconds <= 16 * 3600)
+        return timeValid && (!isInterview || ((!preparationDetails || interviewItems.allSatisfy(\.valid)) && (!onlyOutput || interviewItems.contains(where: \.hasOutput) || (draft.existing.map { record in store.interviewEntries.contains { $0.sessionID == record.id } } ?? false))))
+    }
 
     /// Another counted focus session that overlaps this time, to warn about double counting.
     private var overlap: SessionRecord? {
@@ -381,6 +396,7 @@ struct ManualRecordPanel: View {
                             .datePickerStyle(.field)
                         Spacer()
                     }
+                    if !onlyOutput {
                     HStack(spacing: 12) {
                         FormField(label: "Start time", icon: "clock") {
                             DatePicker("", selection: $draft.start, displayedComponents: .hourAndMinute)
@@ -396,6 +412,7 @@ struct ManualRecordPanel: View {
                         }
                     }
                     durationBox
+                    }
                     FormField(label: "Task", icon: "scope") {
                         Picker("", selection: $draft.taskID) {
                             Text("No task").tag(UUID?.none)
@@ -417,6 +434,17 @@ struct ManualRecordPanel: View {
                                 Text(p.displayTitle).tag(String?.some(p.id))
                             }
                         }.labelsHidden().pickerStyle(.menu)
+                    }
+                    if isInterview {
+                        Toggle("Record quantities only (0 min)", isOn: $quantityOnly)
+                            .onChange(of: quantityOnly) { if $0 && draft.existing?.activeSeconds != 0 { preparationDetails = true } }
+                        DisclosureGroup("Preparation details (optional)", isExpanded: $preparationDetails) {
+                            InterviewItemEditor(items: $interviewItems).padding(.top, 8)
+                            if draft.existing != nil {
+                                Text("New items are added to this session. Edit existing items from History → Preparation details.")
+                                    .font(.caption).foregroundColor(Palette.inkSoft)
+                            }
+                        }
                     }
                     noteField
                     HStack(alignment: .top, spacing: 12) {
@@ -452,6 +480,7 @@ struct ManualRecordPanel: View {
         }
         .padding(24)
         .frame(width: 430)
+        .onAppear { quantityOnly = isInterview && draft.existing?.activeSeconds == 0 }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Palette.card))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Palette.stroke))
@@ -571,6 +600,7 @@ struct ManualRecordPanel: View {
 
     private func save() {
         guard valid else { return }
+        let duration = onlyOutput ? 0 : seconds
         let task = store.task(draft.taskID)
         let note = draft.note.trimmingCharacters(in: .whitespacesAndNewlines)
         let firstLine = note.components(separatedBy: .newlines).first ?? ""
@@ -579,12 +609,12 @@ struct ManualRecordPanel: View {
             phase: .focus,
             intention: task?.name ?? (firstLine.isEmpty ? "Manual focus" : String(firstLine.prefix(60))),
             start: start,
-            end: end,
-            plannedSeconds: seconds,
+            end: onlyOutput ? start : end,
+            plannedSeconds: duration,
             extensionSeconds: 0,
             extensions: 0,
-            activeSeconds: seconds,
-            completed: true,
+            activeSeconds: duration,
+            completed: duration > 0,
             taskID: draft.taskID,
             isManual: true,
             note: note,
@@ -593,6 +623,7 @@ struct ManualRecordPanel: View {
             problemOutcome: draft.problemID == nil ? nil : (draft.existing?.problemID == draft.problemID ? (draft.existing?.problemOutcome ?? .skipped) : .skipped)
         )
         store.upsert(record)
+        if isInterview && preparationDetails { store.addInterviewItems(interviewItems, to: record, source: .manual) }
         onClose()
     }
 }

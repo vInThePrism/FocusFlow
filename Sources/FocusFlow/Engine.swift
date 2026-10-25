@@ -29,6 +29,7 @@ final class Engine: ObservableObject {
 
     @Published private(set) var linkedProblemID: String?
     @Published var pendingProblemSessionID: UUID?
+    @Published var pendingInterviewSession: SessionRecord?
 
     private let store: Store
     private var endDate: Date?
@@ -256,13 +257,13 @@ final class Engine: ObservableObject {
 
     /// "Finish session": save and get ready for the next focus.
     func finishSession() {
-        if state != .idle { commit() }
+        if state != .idle { commit(); offerInterviewLog() }
         prepare(.focus)
     }
 
     /// Saves the focus session (if any) and starts a break.
     func startBreak(_ kind: Phase?) {
-        if state != .idle { commit() }
+        if state != .idle { commit(); offerInterviewLog() }
         prepare(kind ?? suggestedBreak)
         start()
     }
@@ -295,6 +296,13 @@ final class Engine: ObservableObject {
     }
 
     // MARK: - Internals
+
+    private func offerInterviewLog() {
+        guard let record = liveRecord, record.phase == .focus, record.problemID == nil,
+              store.task(record.taskID)?.isInterviewPreparation == true,
+              let saved = store.records.first(where: { $0.id == record.id }) else { return }
+        pendingInterviewSession = saved
+    }
 
     private func prepare(_ p: Phase) {
         stopTicker()

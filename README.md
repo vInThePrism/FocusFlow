@@ -48,3 +48,9 @@ Settings → Data & backup lets you export JSON/CSV, import a backup, or move th
 ### Verification
 
 `swift test` runs the import, shared-progress, legacy-data, persistence, review-date and timer-association regressions. `bash build.sh` creates the app; `bash build.sh --install` replaces the installed app.
+
+## Interview Preparation
+
+In Plan, use **View preparation** on the existing Interview Preparation task. Start Focus uses the shared timer; Finish or Take break offers optional **Save / Skip** output logging. Extensions remain part of the same session.
+
+Track Coding Questions, Project BQs, Project Reviews, General Questions and Mock Interviews separately. Use **Add item** for multiple outputs. History's manual record panel has optional preparation details and **Record quantities only (0 min)**; use a session's **Preparation details…** menu to add, edit or delete outputs. Counts never add focus minutes or change task completion goals. Stats shows the same selected day/month/year with a small quantity trend. JSON backups and imports include all preparation entries; deleting a session deletes its linked outputs.

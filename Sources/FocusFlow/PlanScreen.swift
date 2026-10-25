@@ -5,6 +5,7 @@ struct PlanScreen: View {
     @EnvironmentObject var store: Store
     @State private var editing: PlanTask?
     @State private var creating = false
+    @State private var interviewTask: PlanTask?
     @State private var day = Date()
 
     var body: some View {
@@ -28,6 +29,9 @@ struct PlanScreen: View {
         .padding(.trailing, 20)
         .sheet(item: $editing) { t in
             TaskEditor(task: t, isNew: false).environmentObject(store)
+        }
+        .sheet(item: $interviewTask) { task in
+            InterviewPreparationDetails(task: task)
         }
         .sheet(isPresented: $creating) {
             TaskEditor(task: PlanTask(name: "", minutes: 60, weekdays: Weekdays.workdays, icon: "checklist"), isNew: true)
@@ -61,7 +65,7 @@ struct PlanScreen: View {
                     .padding(.vertical, 8)
             } else {
                 ForEach(store.tasks) { t in
-                    TaskRow(task: t, logic: logic) { editing = t }
+                    TaskRow(task: t, logic: logic, onDetails: { interviewTask = t }) { editing = t }
                 }
             }
         }
@@ -73,6 +77,7 @@ struct TaskRow: View {
     @EnvironmentObject var store: Store
     let task: PlanTask
     let logic: PlanLogic
+    var onDetails: (() -> Void)? = nil
     let onEdit: () -> Void
 
     var body: some View {
@@ -87,6 +92,9 @@ struct TaskRow: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Palette.ink)
                     .lineLimit(1)
+                if task.isInterviewPreparation {
+                    Button("View preparation") { onDetails?() }.buttonStyle(.link).font(.caption)
+                }
                 if task.name.lowercased() == "leetcode practice" {
                     Button("Open today's problems") { nav.page = .leetcode }
                         .buttonStyle(.link).font(.caption)

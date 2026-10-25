@@ -153,6 +153,10 @@ struct RootView: View {
                 .environmentObject(engine)
                 .environmentObject(store)
         }
+        .sheet(item: $engine.pendingInterviewSession) { session in
+            InterviewQuickLog(session: session, onClose: { engine.pendingInterviewSession = nil })
+                .environmentObject(store)
+        }
         .onAppear {
             AppModel.openMain = { openWindow(id: "main") }
         }
